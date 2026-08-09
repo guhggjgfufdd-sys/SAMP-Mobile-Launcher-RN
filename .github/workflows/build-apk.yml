@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,25 +16,26 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Setup Java JDK
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install dependencies
-        run: yarn install
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Make Gradlew executable
+      - name: Install dependencies
+        run: npm install
+
+      - name: Make Gradle executable
         run: chmod +x android/gradlew
 
       - name: Build Release APK
-        run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:ThreadStackSize=8192"
+        run: cd android && ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
