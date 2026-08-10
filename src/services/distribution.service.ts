@@ -5,15 +5,7 @@ export const DistributionService = {
     return {
       cdnLauncher: '',
       cdnCache: '',
-      cache: [
-        {
-          id: 1,
-          path: 'cache',
-          name: 'gta3.img',
-          gpu: ['Mali', 'Adreno', 'PowerVR'],
-          bytes: [1500000000],
-        },
-      ],
+      cache: [],
       rss: '',
       versionHash: '1.0.0',
       packageName: 'com.lasventuras.samp',
@@ -48,7 +40,7 @@ export const DistributionService = {
 export type DistributionResponse = {
   cdnLauncher: string;
   cdnCache: string;
-  cache: CacheType[];
+  cache: any[];
   rss: string;
   versionHash: string;
   packageName: string;
@@ -56,14 +48,6 @@ export type DistributionResponse = {
   servers: ServerType[];
   launcher: LauncherType;
   filesContinue: string[];
-};
-
-type CacheType = {
-  id: number;
-  path: string;
-  name: string;
-  gpu: string[];
-  bytes: number[];
 };
 
 type LauncherType = {
