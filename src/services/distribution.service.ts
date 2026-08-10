@@ -1,18 +1,43 @@
-import { URL_DISTRIBUTION } from '@env';
 import axios from 'axios';
-import { CacheType } from '../actions/loaderActions';
 
 export const DistributionService = {
   async get() {
-    const response = await axios
-      .get<DistributionResponseType>(URL_DISTRIBUTION)
-      .then(res => res.data);
-    return response;
+    // بيانات سيرفرك مباشرة بدون ما يجيبها من الانترنت
+    return {
+      cdnLauncher: '',
+      cdnCache: '',
+      cacheMode: [
+        { id: 1, name: 'Обычная', url: '', bytes: 0, size: '0', hash: '' },
+      ],
+      rss: '',
+      versionHash: '1.0.0',
+      packageName: 'com.lasventuras.samp',
+      projectName: 'Las Venturas RP',
+      servers: [
+        {
+          id: 1,
+          show: true,
+          version: '0.3.7',
+          icon: '',
+          events: [],
+          slot: 100,
+          bonus: false,
+          name: 'Las Venturas RP',
+          description: 'Main Server',
+          address: '142.132.203.47:21299',
+          sampVersion: '0.3.7',
+        },
+      ],
+      launcher: {
+        appVersion: '1.0.0',
+        name: 'launcher.apk',
+        hash: '',
+        bytes: 0,
+        size: '0',
+      },
+      filesContinue: [],
+    };
   },
-};
-
-type DistributionResponseType = DistributionResponse & {
-  cache: CacheType[];
 };
 
 export type DistributionResponse = {
@@ -25,10 +50,17 @@ export type DistributionResponse = {
   projectName: string;
   servers: ServerType[];
   launcher: LauncherType;
-  filesContinue: FileContinueType;
+  filesContinue: string[];
 };
 
-type FileContinueType = string[];
+type CacheType = {
+  id: number;
+  name: string;
+  url: string;
+  bytes: number;
+  size: string;
+  hash: string;
+};
 
 type LauncherType = {
   appVersion: string;
@@ -43,7 +75,7 @@ type EventType = {
   style: 'red' | 'blue';
 };
 
-export type ServerType = {
+type ServerType = {
   id: number;
   show: boolean;
   version: string;
