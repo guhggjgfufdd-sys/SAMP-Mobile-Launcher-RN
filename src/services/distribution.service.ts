@@ -2,12 +2,17 @@ import axios from 'axios';
 
 export const DistributionService = {
   async get() {
-    // بيانات سيرفرك مباشرة بدون ما يجيبها من الانترنت
     return {
       cdnLauncher: '',
       cdnCache: '',
-      cacheMode: [
-        { id: 1, name: 'Обычная', url: '', bytes: 0, size: '0', hash: '' },
+      cache: [
+        {
+          id: 1,
+          path: 'cache',
+          name: 'gta3.img',
+          gpu: ['Mali', 'Adreno', 'PowerVR'],
+          bytes: [1500000000],
+        },
       ],
       rss: '',
       versionHash: '1.0.0',
@@ -43,7 +48,7 @@ export const DistributionService = {
 export type DistributionResponse = {
   cdnLauncher: string;
   cdnCache: string;
-  cacheMode: CacheType[];
+  cache: CacheType[];
   rss: string;
   versionHash: string;
   packageName: string;
@@ -55,11 +60,10 @@ export type DistributionResponse = {
 
 type CacheType = {
   id: number;
+  path: string;
   name: string;
-  url: string;
-  bytes: number;
-  size: string;
-  hash: string;
+  gpu: string[];
+  bytes: number[];
 };
 
 type LauncherType = {
