@@ -4,7 +4,7 @@ export const DistributionService = {
   async get() {
     return {
       cdnLauncher: '',
-      cdnCache: '',
+      cdnCache: 'https://www.mediafire.com/file/g7xu73fsm6i14fp/2.11+gtasa.zip/file',
       cache: [],
       rss: '',
       versionHash: '1.0.0',
@@ -21,7 +21,7 @@ export const DistributionService = {
           bonus: false,
           name: 'Las Venturas RP',
           description: 'Main Server',
-          address: '142.132.203.47:21299',
+          address: '142.132.203.47:2129',
           sampVersion: '0.3.7',
         },
       ],
