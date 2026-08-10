@@ -4,7 +4,7 @@ export const DistributionService = {
   async get() {
     return {
       cdnLauncher: '',
-      cdnCache: 'https://www.mediafire.com/file/g7xu73fsm6i14fp/2.11+gtasa.zip/file',
+      cdnCache: 'https://drive.google.com/uc?export=download&id=1KmC1dNHkwTZ_mWT9PC8JuGSi1IXb2CZa',
       cache: [],
       rss: '',
       versionHash: '1.0.0',
