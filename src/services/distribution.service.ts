@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 export const DistributionService = {
   async get() {
     return {
@@ -50,7 +48,7 @@ export type DistributionResponse = {
   filesContinue: string[];
 };
 
-type LauncherType = {
+export type LauncherType = {
   appVersion: string;
   name: string;
   hash: string;
@@ -58,12 +56,12 @@ type LauncherType = {
   size: string;
 };
 
-type EventType = {
+export type EventType = {
   title: string;
   style: 'red' | 'blue';
 };
 
-type ServerType = {
+export type ServerType = {
   id: number;
   show: boolean;
   version: string;
@@ -74,4 +72,5 @@ type ServerType = {
   name: string;
   description: string;
   address: string;
-  sampVersion: stri
+  sampVersion: string;
+};
