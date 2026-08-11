@@ -4,7 +4,7 @@ export const DistributionService = {
   async get() {
     return {
       cdnLauncher: '',
-      cdnCache: 'https://drive.google.com/uc?export=download&id=1KmC1dNHkwTZ_mWT9PC8JuGSi1IXb2CZa',
+      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip',
       cache: [],
       rss: '',
       versionHash: '1.0.0',
