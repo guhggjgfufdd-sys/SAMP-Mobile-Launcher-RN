@@ -16,17 +16,14 @@ public class WarMedia extends WarGamepad
     private String baseDirectoryRoot;
 
     public String GetGameBaseDirectory() {
-        if (Environment.getExternalStorageState().equals("mounted"))
+        try
         {
-            try
-            {
-                File externalFilesDir = getExternalFilesDir(null);
-                String absolutePath = externalFilesDir.getAbsolutePath();
-                this.baseDirectoryRoot = absolutePath.substring(0, absolutePath.indexOf("/Android"));
-                return externalFilesDir.getAbsolutePath() + "/";
-            } catch (Exception e)
-            {
-            }
+            File internalFilesDir = getFilesDir();
+            String absolutePath = internalFilesDir.getAbsolutePath();
+            this.baseDirectoryRoot = absolutePath;
+            return internalFilesDir.getAbsolutePath() + "/";
+        } catch (Exception e)
+        {
         }
         return "";
     }
@@ -109,13 +106,13 @@ public class WarMedia extends WarGamepad
         int i = 0;
         System.out.println("Build info version device  " + Build.DEVICE);
         System.out.println("Build MANUFACTURER  " + Build.MANUFACTURER);
-        System.out.println("Build BOARD  " + Build.BOARD);
-        System.out.println("Build DISPLAY  " + Build.DISPLAY);
-        System.out.println("Build CPU_ABI  " + Build.CPU_ABI);
-        System.out.println("Build CPU_ABI2  " + Build.CPU_ABI2);
-        System.out.println("Build HARDWARE  " + Build.HARDWARE);
-        System.out.println("Build MODEL  " + Build.MODEL);
-        System.out.println("Build PRODUCT  " + Build.PRODUCT);
+        System.out.println("Build BOARD   " + Build.BOARD);
+        System.out.println("Build DISPLAY   " + Build.DISPLAY);
+        System.out.println("Build CPU_ABI   " + Build.CPU_ABI);
+        System.out.println("Build CPU_ABI2   " + Build.CPU_ABI2);
+        System.out.println("Build HARDWARE   " + Build.HARDWARE);
+        System.out.println("Build MODEL   " + Build.MODEL);
+        System.out.println("Build PRODUCT   " + Build.PRODUCT);
         int i2 = 0;
         int numberOfProcessors = 1 * 4;
         int i3 = 8 * 64;
@@ -263,7 +260,7 @@ public class WarMedia extends WarGamepad
     public String GetAppId()
     {
         System.out.println("**** GetAppId");
-       return "";
+        return "";
     }
 
     public void ScreenSetWakeLock(boolean z) {
@@ -279,4 +276,4 @@ public class WarMedia extends WarGamepad
         System.out.println("**** ServiceAppCommandValue " + str + " " + str2);
         return 0;
     }
-}
+                              }
