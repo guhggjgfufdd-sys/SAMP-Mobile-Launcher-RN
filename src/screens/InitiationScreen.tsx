@@ -49,7 +49,7 @@ export const InitiationScreen = React.memo(
     useFocusEffect(
       React.useCallback(() => {
         if (isInitial) {
-          return navigation.replace('Main');
+          return navigation.replace('DownloadStartScreen');
         }
 
         return () => {};
