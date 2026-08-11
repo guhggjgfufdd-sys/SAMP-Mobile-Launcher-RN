@@ -8,8 +8,8 @@ export const DistributionService = {
       cache: [],
       rss: '',
       versionHash: '1.0.0',
-      packageName: 'com.lasventuras.samp',
-      projectName: 'Las Venturas RP',
+      packageName: 'com.touch.mobile.dark',
+      projectName: 'Touch Mobile Dark',
       servers: [
         {
           id: 1,
@@ -21,7 +21,7 @@ export const DistributionService = {
           bonus: false,
           name: 'Las Venturas RP',
           description: 'Main Server',
-          address: '142.132.203.47:2129',
+          address: '142.132.203.47:2125',
           sampVersion: '0.3.7',
         },
       ],
@@ -74,5 +74,4 @@ type ServerType = {
   name: string;
   description: string;
   address: string;
-  sampVersion: string;
-};
+  sampVersion: stri
