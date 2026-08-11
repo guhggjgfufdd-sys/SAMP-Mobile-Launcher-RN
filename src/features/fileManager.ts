@@ -20,15 +20,15 @@ export const FileDownload = {
 
 export const FilePath = {
   getPathDirCache: () => {
-    return `${RNFS.ExternalDirectoryPath}`;
+    return `${RNFS.DocumentDirectoryPath}`;
   },
 
   getPathDirLauncher: () => {
-    return `${RNFS.ExternalDirectoryPath}`;
+    return `${RNFS.DocumentDirectoryPath}`;
   },
 
   getPathDirSetting: () => {
-    return `/storage/emulated/0/Android/data/${PACKAGE_NAME}/files/SAMP/settings.ini`;
+    return `${RNFS.DocumentDirectoryPath}/SAMP/settings.ini`;
   },
 
   generatePathCache: (path: string): string[] => {
