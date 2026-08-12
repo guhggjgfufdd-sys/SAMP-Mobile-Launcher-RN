@@ -123,7 +123,7 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
       );
 
       const res = await FileDownload.download({
-        fromUrl: `${urlValid}/${toFile}/${toName}`,
+        fromUrl: toFile ? `${urlValid}/${toFile}/${toName}` : `${urlValid}/${toName}`,
         toFile,
         toName,
         progress: ({ bytesWritten }: DownloadProgressType) => {
@@ -204,3 +204,4 @@ export const fetchIsDownloadSuccess = (): AppThunk => async dispatch => {
     dispatch(setSuccessDownload({ isSuccessDownload: false }));
   }
 };
+
