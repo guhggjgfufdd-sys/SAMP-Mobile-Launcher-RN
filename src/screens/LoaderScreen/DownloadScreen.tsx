@@ -1,7 +1,5 @@
 import KeepAwake from '@sayem314/react-native-keep-awake';
 import React, { useEffect } from 'react';
-import KeepAwake from '@sayem314/react-native-keep-awake';
-import React, { useEffect } from 'react';
 import { Dimensions, Text, View } from 'react-native';
 import * as Progress from 'react-native-progress';
 import { verticalScale } from 'react-native-size-matters';
