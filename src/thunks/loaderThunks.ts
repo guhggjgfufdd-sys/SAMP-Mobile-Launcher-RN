@@ -2,7 +2,14 @@ import notifee, { AndroidImportance } from '@notifee/react-native';
 import RNFS from 'react-native-fs';
 import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
 
-const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
+const TOTAL_FILE_BYTES = 580869325; // الحجم الكامل المضمون (553.96 MB)
+const DOWNLOAD_FILENAME = '2.11.gtasa.zip';
+
+// ضع هنا رابط التنزيل المباشر الموثوق
+const DIRECT_DOWNLOAD_URL = 'https://raw.githubusercontent.com/guhggjgfuf/SAMP-Mobile-Launcher-RN/main/2.11.gtasa.zip';
+
+let currentJobId: number | null = null;
+let watchdogTimer: NodeJS.Timeout | null = null;
 
 export const compareFileRecursion = ({ caches }: { caches: any[] }) => async (dispatch: any) => {
   dispatch(
@@ -16,18 +23,22 @@ export const compareFileRecursion = ({ caches }: { caches: any[] }) => async (di
 };
 
 export const fetchStartDownload = () => async (dispatch: any) => {
-  const downloadDir = RNFS.CachesDirectoryPath;
-  const archivePath = `${downloadDir}/2.11.gtasa.zip`;
-
-  // تأكد من وجود مجلد الكاش
-  const dirExists = await RNFS.exists(downloadDir);
-  if (!dirExists) {
-    await RNFS.mkdir(downloadDir);
+  // 1. تنظيف أي عمليات تحميل سابقة متوقفة
+  if (currentJobId !== null) {
+    try {
+      RNFS.stopDownload(currentJobId);
+    } catch (e) {}
+    currentJobId = null;
   }
 
-  // رابط التنزيل
-  const downloadUrl = 'https://raw.githubusercontent.com/guhggjgfuf/SAMP-Mobile-Launcher-RN/main/2.11.gtasa.zip';
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
 
+  const archivePath = `${RNFS.DocumentDirectoryPath}/${DOWNLOAD_FILENAME}`;
+
+  // 2. إعداد قناة إشعارات الأندرويد
   let channelId = 'download_channel';
   try {
     channelId = await notifee.createChannel({
@@ -39,56 +50,111 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     console.log('Notification channel error:', e);
   }
 
-  // مسح أي بقايا ملف تالف سابق
+  // 3. قراءة حجم الملف المحمّل سابقاً (إن وجد) لغرض الاستئناف
+  let existingBytes = 0;
   const fileExists = await RNFS.exists(archivePath);
   if (fileExists) {
-    const stat = await RNFS.stat(archivePath);
-    if (Number(stat.size) < 1000) {
-      await RNFS.unlink(archivePath);
+    try {
+      const stat = await RNFS.stat(archivePath);
+      existingBytes = Number(stat.size);
+    } catch (e) {
+      existingBytes = 0;
     }
   }
 
-  let isHttpOk = false;
+  // إذا كان الملف محمل بالكامل وبحجم صحيح
+  if (existingBytes >= TOTAL_FILE_BYTES - 2000) {
+    dispatch(
+      setLoaderDownload({
+        currentBytes: TOTAL_FILE_BYTES,
+        needBytes: TOTAL_FILE_BYTES,
+        fileName: DOWNLOAD_FILENAME,
+        numberOfDownloads: 1,
+      })
+    );
+    await notifee.displayNotification({
+      id: 'download_notification',
+      title: 'التحميل مكتمل! 🎮',
+      body: 'ملفات اللعبة جاهزة للتثبيت والتشغيل.',
+      android: { channelId },
+    });
+    return;
+  }
 
-  const downloadTask = RNFS.downloadFile({
-    fromUrl: downloadUrl,
-    toFile: archivePath,
-    begin: (res) => {
-      if (res.statusCode === 200 || res.statusCode === 206) {
-        isHttpOk = true;
-      } else {
-        isHttpOk = false;
-        console.log('Download HTTP error code:', res.statusCode);
+  // 4. إعداد ترويسة Range للاستئناف التلقائي من نقطة التوقف
+  const headers: { [key: string]: string } = {
+    'User-Agent': 'Mozilla/5.0 (Android; Mobile)',
+  };
+
+  if (existingBytes > 0 && existingBytes < TOTAL_FILE_BYTES) {
+    headers['Range'] = `bytes=${existingBytes}-`;
+  }
+
+  // 5. مراقب التجمّد (Watchdog) للتعامل مع الإنترنت الضعيف
+  const resetWatchdog = () => {
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    watchdogTimer = setTimeout(() => {
+      console.log('Download stalled due to weak network. Auto-resuming...');
+      if (currentJobId !== null) {
+        try { RNFS.stopDownload(currentJobId); } catch (e) {}
       }
+      // إعادة استدعاء التنزيل لاستئناف التحميل تلقائياً
+      dispatch(fetchStartDownload() as any);
+    }, 12000); // إعطاء مهلة 12 ثانية للنت الضعيف قبل إعادة المحاولة
+  };
 
-      dispatch(
-        setLoaderDownload({
-          currentBytes: 0,
-          needBytes: TOTAL_FILE_BYTES,
-          fileName: '2.11.gtasa.zip',
-          numberOfDownloads: 0,
-        })
-      );
+  resetWatchdog();
+
+  // تحديث الشاشة بالحجم الحالي المحمّل
+  dispatch(
+    setLoaderDownload({
+      currentBytes: existingBytes,
+      needBytes: TOTAL_FILE_BYTES,
+      fileName: DOWNLOAD_FILENAME,
+      numberOfDownloads: 0,
+    })
+  );
+
+  // 6. بدء عملية التحميل
+  const downloadTask = RNFS.downloadFile({
+    fromUrl: DIRECT_DOWNLOAD_URL,
+    toFile: archivePath,
+    headers: headers,
+    connectionTimeout: 20000,
+    readTimeout: 25000,
+    begin: (res) => {
+      console.log('Download started, response code:', res.statusCode);
+      // لو السيرفر لا يدعم Range وقدم خطأ 416، يُحذف الملف الجزئي للبدء النظيف
+      if (res.statusCode === 416) {
+        RNFS.unlink(archivePath).then(() => {
+          dispatch(fetchStartDownload() as any);
+        });
+      }
     },
     progress: (res) => {
-      if (!isHttpOk) return;
+      resetWatchdog(); // إعادة ضبط المؤقت لأن البيانات تصل بنجاح
 
-      const bytesWritten = res.bytesWritten;
+      const totalDownloaded = existingBytes + Number(res.bytesWritten);
+
+      // تحديث واجهة اللانشر (Redux State)
       dispatch(
         setLoaderDownload({
-          currentBytes: bytesWritten,
+          currentBytes: Math.min(totalDownloaded, TOTAL_FILE_BYTES),
           needBytes: TOTAL_FILE_BYTES,
-          fileName: '2.11.gtasa.zip',
+          fileName: DOWNLOAD_FILENAME,
           numberOfDownloads: 0,
         })
       );
 
-      const progressPercent = Math.min(100, Math.floor((bytesWritten / TOTAL_FILE_BYTES) * 100));
+      // تحديث شريط الإشعارات العلوي
+      const progressPercent = Math.min(100, Math.floor((totalDownloaded / TOTAL_FILE_BYTES) * 100));
+      const mbCurrent = (totalDownloaded / (1024 * 1024)).toFixed(1);
+      const mbTotal = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(1);
 
       notifee.displayNotification({
         id: 'download_notification',
         title: 'جاري تحميل ملفات اللعبة...',
-        body: `${progressPercent}% - (${(bytesWritten / 1024 / 1024).toFixed(1)}MB / 553.9MB)`,
+        body: `${progressPercent}% - (${mbCurrent} MB / ${mbTotal} MB)`,
         android: {
           channelId,
           onlyAlertOnce: true,
@@ -100,49 +166,43 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       });
     },
     background: true,
+    discretionary: true,
   });
 
+  currentJobId = downloadTask.jobId;
+
   try {
-    const result = await downloadTask.promise;
+    await downloadTask.promise;
+    if (watchdogTimer) clearTimeout(watchdogTimer);
 
-    if (!isHttpOk || result.statusCode >= 400) {
-      const exists = await RNFS.exists(archivePath);
-      if (exists) await RNFS.unlink(archivePath);
-
-      notifee.displayNotification({
-        id: 'download_notification',
-        title: 'خطأ في رابط التحميل',
-        body: 'الرابط غير صالح أو الملف غير موجود (404).',
-        android: { channelId },
-      });
-
-      setTimeout(() => {
-        dispatch(fetchStartDownload() as any);
-      }, 5000);
-      return;
+    // 7. التحقق الصارم من عدم وجود "تحميل وهمي"
+    let finalSize = 0;
+    if (await RNFS.exists(archivePath)) {
+      const stat = await RNFS.stat(archivePath);
+      finalSize = Number(stat.size);
     }
 
-    const stat = await RNFS.stat(archivePath);
-    const finalSize = Number(stat.size);
-
-    if (finalSize < 520000000) {
+    // إذا كان الحجم المحمّل أقل من الحجم الفعلي للملف
+    if (finalSize < TOTAL_FILE_BYTES - 2000) {
       notifee.displayNotification({
         id: 'download_notification',
-        title: 'انقطع الاتصال قبل إكمال التحميل',
-        body: 'جاري إعادة المحاولة...',
+        title: 'ضعف في تغطية الإنترنت',
+        body: 'جاري استئناف باقي التحميل تلقائياً...',
         android: { channelId },
       });
 
+      // استئناف التحميل تلقائياً لاستكمال المتبقي
       setTimeout(() => {
         dispatch(fetchStartDownload() as any);
       }, 3000);
       return;
     }
 
+    // 8. إعلان النجاح الحقيقي عند وصول التحميل لـ 100%
     await notifee.displayNotification({
       id: 'download_notification',
-      title: 'تم اكتمال تحميل اللعبة بنجاح!',
-      body: 'جاهز للتثبيت والتشغيل.',
+      title: 'تم اكتمال التحميل بنجاح! 🚀',
+      body: 'جاهز الآن لتثبيت واستخراج اللعبة.',
       android: { channelId },
     });
 
@@ -150,14 +210,17 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       setLoaderDownload({
         currentBytes: TOTAL_FILE_BYTES,
         needBytes: TOTAL_FILE_BYTES,
-        fileName: '2.11.gtasa.zip',
+        fileName: DOWNLOAD_FILENAME,
         numberOfDownloads: 1,
       })
     );
   } catch (error) {
-    console.log('Download error:', error);
+    console.log('Download error, auto-retry:', error);
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+
+    // إعادة المحاولة والاستئناف التلقائي عند قطع النت
     setTimeout(() => {
       dispatch(fetchStartDownload() as any);
-    }, 5000);
+    }, 4000);
   }
 };
