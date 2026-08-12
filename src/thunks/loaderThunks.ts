@@ -2,12 +2,13 @@ import notifee, { AndroidImportance } from '@notifee/react-native';
 import RNFS from 'react-native-fs';
 import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
 
-// الحجم الفعلي المطلوب لملف اللعبة بالبايت (553.96 MB)
-const TOTAL_FILE_BYTES = 580869325;
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-
-// الرابط الخاص بك
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+
+// حارس أمان يمنع تكرار التنزيل وتصفير العداد عند إعادة رندر الشاشة
+let isDownloadingActive = false;
+let activeJobId: number | null = null;
 
 export const compareFileRecursion = ({ caches }: { caches: any[] }) => async (dispatch: any) => {
   dispatch(
@@ -21,9 +22,16 @@ export const compareFileRecursion = ({ caches }: { caches: any[] }) => async (di
 };
 
 export const fetchStartDownload = () => async (dispatch: any) => {
+  // إذا كان التنزيل جارياً بالفعل، يمنع إعادة تصفيره وإلغاء العملية
+  if (isDownloadingActive) {
+    console.log('Download already running, ignoring duplicate trigger.');
+    return;
+  }
+
+  isDownloadingActive = true;
   const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
-  // 1. إعداد قناة إشعارات الأندرويد
+  // 1. إنشاء قناة الإشعارات
   let channelId = 'download_channel';
   try {
     channelId = await notifee.createChannel({
@@ -32,14 +40,15 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       importance: AndroidImportance.LOW,
     });
   } catch (e) {
-    console.log('Notification channel setup error:', e);
+    console.log('Channel error:', e);
   }
 
-  // 2. الفحص المبكر: إذا كان الملف محملاً سابقاً بالكامل وبحجمه الصحيح
+  // 2. فحص هل الملف موجود ومكتمل بالكامل مسبقاً؟
   if (await RNFS.exists(archivePath)) {
     try {
-      const existingStat = await RNFS.stat(archivePath);
-      if (Number(existingStat.size) >= TOTAL_FILE_BYTES - 100000) {
+      const stat = await RNFS.stat(archivePath);
+      if (Number(stat.size) >= TOTAL_FILE_BYTES - 100000) {
+        isDownloadingActive = false;
         dispatch(
           setLoaderDownload({
             currentBytes: TOTAL_FILE_BYTES,
@@ -53,29 +62,27 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     } catch (e) {}
   }
 
-  // 3. تهيئة الواجهة لبدء التنزيل
-  dispatch(
-    setLoaderDownload({
-      currentBytes: 0,
-      needBytes: TOTAL_FILE_BYTES,
-      fileName: FILE_NAME,
-      numberOfDownloads: 0,
-    })
-  );
-
-  // 4. بدء عملية التحميل
+  // 3. بدء عملية التحميل المباشرة
   const downloadTask = RNFS.downloadFile({
     fromUrl: DOWNLOAD_URL,
     toFile: archivePath,
-    progressDivider: 1, // لتحديث شريط التقدم بسلاسة بدون تقطيع
+    progressDivider: 1,
     background: true,
     begin: (res) => {
-      console.log('Download task started, status code:', res.statusCode);
+      console.log('Download started, status:', res.statusCode);
+      dispatch(
+        setLoaderDownload({
+          currentBytes: 0,
+          needBytes: TOTAL_FILE_BYTES,
+          fileName: FILE_NAME,
+          numberOfDownloads: 0,
+        })
+      );
     },
     progress: (res) => {
       const currentBytes = Number(res.bytesWritten);
 
-      // تحديث شاشة اللانشر (Redux State)
+      // تحديث واجهة اللانشر
       dispatch(
         setLoaderDownload({
           currentBytes: currentBytes,
@@ -106,39 +113,40 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     },
   });
 
+  activeJobId = downloadTask.jobId;
+
   try {
     await downloadTask.promise;
+    isDownloadingActive = false;
 
-    // 5. الفحص الصارم لمنع التنزيل الوهمي عند انقطاع النت
+    // 4. فحص الحجم الفعلي لمنع التنزيل الوهمي
     let downloadedSize = 0;
     if (await RNFS.exists(archivePath)) {
       const stat = await RNFS.stat(archivePath);
       downloadedSize = Number(stat.size);
     }
 
-    // إذا انتهى التحميل وكان الحجم أقل من 553.96 MB (بسبب انقطاع الشبكة)
+    // لو انقطع النت وأصل الملف ناقص (أقل من 553.96 MB)
     if (downloadedSize < TOTAL_FILE_BYTES - 100000) {
-      console.log('Incomplete download detected! Retrying automatically...');
-
       await notifee.displayNotification({
         id: 'download_notification',
-        title: 'ضعف أو انقطاع في الشبكة',
-        body: 'جاري إعادة محاولة التحميل تلقائياً...',
+        title: 'انقطع الاتصال بالشبكة',
+        body: 'جاري إعادة محاولة التوصيل والتحميل...',
         android: { channelId },
       });
 
-      // إعادة المحاولة تلقائياً بعد 3 ثوانٍ
+      // إعادة التوصيل التلقائي عند انقطاع النت
       setTimeout(() => {
         dispatch(fetchStartDownload() as any);
       }, 3000);
       return;
     }
 
-    // 6. إعلان الاكتمال الحقيقي والفعلي
+    // 5. إعلان النجاح الحقيقي
     await notifee.displayNotification({
       id: 'download_notification',
       title: 'تم اكتمال التحميل بنجاح! 🚀',
-      body: 'جاهز الآن لتثبيت واستخراج اللعبة.',
+      body: 'ملفات اللعبة جاهزة للتثبيت.',
       android: { channelId },
     });
 
@@ -151,18 +159,12 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       })
     );
   } catch (error) {
-    console.log('Download connection failed, retrying in 3s:', error);
+    console.log('Download error:', error);
+    isDownloadingActive = false;
 
-    await notifee.displayNotification({
-      id: 'download_notification',
-      title: 'تعذر الاتصال بالشبكة',
-      body: 'جاري إعادة المحاولة والتوصيل تلقائياً...',
-      android: { channelId },
-    });
-
-    // إعادة التوصيل والمحاولة تلقائياً عند انقطاع النت كلياً
+    // إعادة المحاولة التلقائية
     setTimeout(() => {
       dispatch(fetchStartDownload() as any);
-    }, 3000);
+    }, 4000);
   }
 };
