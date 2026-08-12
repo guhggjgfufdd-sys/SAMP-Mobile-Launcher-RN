@@ -4,7 +4,7 @@ import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-const RAW_DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 let isDownloadingActive = false;
 
@@ -25,12 +25,31 @@ export const fetchStartDownload = () => async (dispatch: any) => {
 
   const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
-  // التأكد من وجود المجلد
+  // 1. تنظيف الملف القديم المعطوب إن وجد لفك قفل الذاكرة
   try {
-    await RNFS.mkdir(RNFS.DocumentDirectoryPath);
-  } catch (e) {}
+    if (await RNFS.exists(archivePath)) {
+      const stat = await RNFS.stat(archivePath);
+      // إذا كان الملف محملاً سابقاً وبحجمه الكامل يتخطى التنزيل
+      if (Number(stat.size) >= TOTAL_FILE_BYTES - 100000) {
+        isDownloadingActive = false;
+        dispatch(
+          setLoaderDownload({
+            currentBytes: TOTAL_FILE_BYTES,
+            needBytes: TOTAL_FILE_BYTES,
+            fileName: FILE_NAME,
+            numberOfDownloads: 1,
+          })
+        );
+        return;
+      }
+      // إذا كان ناقصاً نحذفه لنبدأ تنزيل نظيف بدون تعليق
+      await RNFS.unlink(archivePath);
+    }
+  } catch (e) {
+    console.log('File cleanup error:', e);
+  }
 
-  // 1. إعداد قناة الإشعارات
+  // 2. إعداد قناة الإشعارات
   let channelId = 'download_channel';
   try {
     channelId = await notifee.createChannel({
@@ -38,11 +57,9 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       name: 'Game Download',
       importance: AndroidImportance.LOW,
     });
-  } catch (e) {
-    console.log('Notification channel error:', e);
-  }
+  } catch (e) {}
 
-  // 2. تصفير واجهة اللانشر
+  // 3. تصفير واجهة اللانشر لبدء العداد
   dispatch(
     setLoaderDownload({
       currentBytes: 0,
@@ -52,37 +69,21 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     })
   );
 
-  // 3. استخراج الرابط المباشر المباشر المرفوع على الأمازون (objects.githubusercontent.com)
-  let finalUrl = RAW_DOWNLOAD_URL;
-  try {
-    const controller = new AbortController();
-    const response = await fetch(RAW_DOWNLOAD_URL, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-
-    if (response.url && response.url !== RAW_DOWNLOAD_URL) {
-      finalUrl = response.url;
-      console.log('Direct Amazon S3 URL extracted:', finalUrl);
-    }
-    controller.abort(); // إلغاء السحب عبر fetch بعد أخذ الرابط المباشر
-  } catch (e) {
-    console.log('Fetched redirect successfully or skipped:', e);
-  }
-
-  // 4. بدء التحميل بالرابط المباشر النهائي
+  // 4. التنزيل المباشر السريع الصافي بدون fetch
   const downloadTask = RNFS.downloadFile({
-    fromUrl: finalUrl,
+    fromUrl: DOWNLOAD_URL,
     toFile: archivePath,
     progressDivider: 1,
     background: false,
+    connectionTimeout: 30000,
+    readTimeout: 30000,
     begin: (res) => {
-      console.log('Download task started with HTTP code:', res.statusCode);
+      console.log('Download task successfully started! Code:', res.statusCode);
     },
     progress: (res) => {
       const currentBytes = Number(res.bytesWritten);
 
-      // تحديث شاشة التطبيق
+      // تحديث شاشة اللانشر
       dispatch(
         setLoaderDownload({
           currentBytes: currentBytes,
@@ -92,7 +93,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
         })
       );
 
-      // تحديث شريط الإشعارات
+      // تحديث شريط الإشعارات العلوي
       const progressPercent = Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100));
       const mbCurrent = (currentBytes / (1024 * 1024)).toFixed(1);
       const mbTotal = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(1);
@@ -105,10 +106,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
           android: {
             channelId,
             onlyAlertOnce: true,
-            progress: {
-              max: 100,
-              current: progressPercent,
-            },
+            progress: { max: 100, current: progressPercent },
           },
         });
       } catch (e) {}
@@ -119,7 +117,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     await downloadTask.promise;
     isDownloadingActive = false;
 
-    // 5. التأكد من حجم الملف لمنع التحميل الوهمي
+    // 5. فحص حجم الملف النهائي لمنع التنزيل الوهمي
     let downloadedSize = 0;
     if (await RNFS.exists(archivePath)) {
       const stat = await RNFS.stat(archivePath);
@@ -129,7 +127,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     if (downloadedSize < TOTAL_FILE_BYTES - 100000) {
       await notifee.displayNotification({
         id: 'download_notification',
-        title: 'انقطع الاتصال بالشبكة',
+        title: 'انقطع الاتصال قبل إكمال الملف',
         body: 'جاري إعادة المحاولة تلقائياً...',
         android: { channelId },
       });
@@ -140,7 +138,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       return;
     }
 
-    // 6. اكتمال التحميل الحقيقي
+    // 6. إعلان النجاح الحقيقي
     await notifee.displayNotification({
       id: 'download_notification',
       title: 'تم اكتمال التحميل بنجاح! 🚀',
@@ -157,7 +155,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       })
     );
   } catch (error) {
-    console.log('Download failed, retrying:', error);
+    console.log('Download failed, retrying in 4s:', error);
     isDownloadingActive = false;
 
     setTimeout(() => {
