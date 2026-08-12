@@ -4,7 +4,7 @@ import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+const RAW_DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 let isDownloadingActive = false;
 
@@ -25,7 +25,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
 
   const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
-  // 1. إنشاء قناة الإشعارات
+  // 1. إعداد قناة الإشعارات
   let channelId = 'download_channel';
   try {
     channelId = await notifee.createChannel({
@@ -34,7 +34,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       importance: AndroidImportance.LOW,
     });
   } catch (e) {
-    console.log('Channel setup error:', e);
+    console.log('Notification channel error:', e);
   }
 
   // 2. تصفير الواجهة
@@ -47,19 +47,42 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     })
   );
 
-  // 3. بدء التحميل المباشر داخل التطبيق (بدون استخدام DownloadManager النظام)
+  // 3. جلب الرابط المباشر الحقيقي بعد عبور تحويلات GitHub (302 Redirect)
+  let finalUrl = RAW_DOWNLOAD_URL;
+  try {
+    const response = await fetch(RAW_DOWNLOAD_URL, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      },
+    });
+    if (response.url && response.url !== RAW_DOWNLOAD_URL) {
+      finalUrl = response.url;
+      console.log('Resolved direct URL successfully:', finalUrl);
+    }
+  } catch (e) {
+    console.log('Redirect resolution failed, using raw URL:', e);
+  }
+
+  // 4. بدء التنزيل بالرابط المباشر وهوية متصفح أندرويد
   const downloadTask = RNFS.downloadFile({
-    fromUrl: DOWNLOAD_URL,
+    fromUrl: finalUrl,
     toFile: archivePath,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      'Accept': '*/*',
+    },
     progressDivider: 1,
-    background: false, // 👈 تم تغييرها إلى false لحل مشكلة التجميد عند 0 Bytes
+    background: false,
+    connectionTimeout: 20000,
+    readTimeout: 20000,
     begin: (res) => {
-      console.log('Download started HTTP status:', res.statusCode);
+      console.log('Download started, HTTP status code:', res.statusCode);
     },
     progress: (res) => {
       const currentBytes = Number(res.bytesWritten);
 
-      // تحديث شاشة اللانشر فوراً
+      // تحديث شاشة اللانشر
       dispatch(
         setLoaderDownload({
           currentBytes: currentBytes,
@@ -69,7 +92,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
         })
       );
 
-      // تحديث شريط الإشعارات العلوي
+      // تحديث شريط الإشعارات
       const progressPercent = Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100));
       const mbCurrent = (currentBytes / (1024 * 1024)).toFixed(1);
       const mbTotal = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(1);
@@ -96,7 +119,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     await downloadTask.promise;
     isDownloadingActive = false;
 
-    // 4. فحص الحجم الفعلي للحد من التحميل الوهمي عند انقطاع النت
+    // 5. فحص الحجم الفعلي لمنع التحميل الوهمي عند انقطاع النت
     let downloadedSize = 0;
     if (await RNFS.exists(archivePath)) {
       const stat = await RNFS.stat(archivePath);
@@ -117,7 +140,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       return;
     }
 
-    // 5. إعلان النجاح الحقيقي
+    // 6. إعلان النجاح الفعلي
     await notifee.displayNotification({
       id: 'download_notification',
       title: 'تم اكتمال التحميل بنجاح! 🚀',
@@ -134,7 +157,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       })
     );
   } catch (error) {
-    console.log('Download Error:', error);
+    console.log('Download failed, retrying in 4s:', error);
     isDownloadingActive = false;
 
     setTimeout(() => {
