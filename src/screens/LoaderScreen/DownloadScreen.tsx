@@ -13,6 +13,7 @@ import {
 } from '../../selectors/loaderSelectors';
 import { styles } from '../../styles/LoaderStyle';
 import { fetchStartDownload } from '../../thunks/loaderThunks';
+
 const width = Dimensions.get('window').width;
 
 export const DownloadScreen = React.memo(() => {
@@ -25,13 +26,19 @@ export const DownloadScreen = React.memo(() => {
     dispatch(fetchStartDownload());
   }, []);
 
+  // إضافة حماية من القيم الفارغة لتجنب الانهيار أو إعادة التوجيه
   const numberOfDownloads =
-    compare.successCount + (download.numberOfDownloads || 0);
+    (compare?.successCount || 0) + (download?.numberOfDownloads || 0);
 
-  let loaders = Math.floor(
-    (((download.downloadBytes || 0) + compare.downloadsCacheBytes) * 100) /
-      compare.distributionCacheBytes,
-  );
+  const totalCacheBytes = compare?.distributionCacheBytes || 1;
+  const downloadedCacheBytes =
+    (download?.downloadBytes || 0) + (compare?.downloadsCacheBytes || 0);
+
+  let loaders = Math.floor((downloadedCacheBytes * 100) / totalCacheBytes);
+
+  if (isNaN(loaders) || !isFinite(loaders)) {
+    loaders = 0;
+  }
 
   return (
     <LoaderContainer>
@@ -39,16 +46,18 @@ export const DownloadScreen = React.memo(() => {
       <Text style={[styles.title, styles.titleUppercase]}>Загрузка игры</Text>
       <View>
         <Text style={styles.progressTitle}>
-          <Text style={styles.progressName}>{download.fileName}</Text>
+          <Text style={styles.progressName}>
+            {download?.fileName || 'Кэш игры'}
+          </Text>
           <Text style={styles.progressMemory}>
             {' '}
-            [{formatSizeUnits(download.currentBytes || 0)} из{' '}
-            {formatSizeUnits(download.needBytes || 0)}]
+            {formatSizeUnits(download?.currentBytes || 0)} из{' '}
+            {formatSizeUnits(download?.needBytes || 0)}
           </Text>
         </Text>
 
         <Progress.Bar
-          progress={loaders / 100 < 0.001 ? 0.0 : loaders / 100}
+          progress={loaders / 100 < 0.001 ? 0 : loaders / 100}
           animated={true}
           useNativeDriver={true}
           borderWidth={0}
@@ -60,11 +69,12 @@ export const DownloadScreen = React.memo(() => {
         />
 
         <Text style={styles.progressSubtitle}>
-          Загрузка файлов игры [{numberOfDownloads} из{' '}
-          {compare.successCount + compare.rejectCount}]
+          Загрузка файлов игры ({numberOfDownloads}) из{' '}
+          {(compare?.successCount || 0) + (compare?.rejectCount || 0)}
         </Text>
         <Text style={styles.progressPercent}>{loaders > 0 ? loaders : 0}%</Text>
       </View>
     </LoaderContainer>
   );
 });
+
