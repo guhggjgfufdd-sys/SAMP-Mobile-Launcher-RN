@@ -6,7 +6,7 @@ import { verticalScale } from 'react-native-size-matters';
 import { LoaderContainer } from '../../components/Provider/LoaderContainer';
 import { formatSizeUnits } from '../../helpers';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useAppSelector } from '../../hooks/useAppSelecter';
+import { useAppSelector } from '../../hooks/useAppSelector';
 import {
   selectCompare,
   selectLoaderDownload,
