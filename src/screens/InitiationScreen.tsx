@@ -8,13 +8,8 @@ import { LoaderContainer } from '../components';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { selectInitial } from '../selectors/appSelectors';
-import {
-  selectIsSuccessDownload,
-  selectRejectCount,
-} from '../selectors/loaderSelectors';
 import { styles } from '../styles/LoaderStyle';
 import { fetchInitialApp } from '../thunks/appThunks';
-import { autoUpdateLauncher } from '../thunks/launcherThunks';
 
 const width = Dimensions.get('window').width;
 
@@ -24,38 +19,16 @@ export const InitiationScreen = React.memo(
   ({ navigation }: InitiationScreenType) => {
     const dispatch = useAppDispatch();
     const isInitial = useAppSelector(selectInitial);
-    const isSuccessDownload = useAppSelector(selectIsSuccessDownload);
-    const rejectCount = useAppSelector(selectRejectCount);
 
     useEffect(() => {
       dispatch(fetchInitialApp());
     }, []);
 
-    useEffect(() => {
-      if (isInitial) {
-        if (rejectCount) {
-          if (isSuccessDownload === false && rejectCount) {
-            return navigation.replace('DownloadStartScreen');
-          }
-        }
-
-        if (rejectCount) {
-          return navigation.replace('UpdateStartScreen');
-        }
-
-        dispatch(autoUpdateLauncher());
-      }
-    }, [isInitial, isSuccessDownload, rejectCount]);
-
-    // تم تعديل التوجيه المباشر لشاشة التنزيل بدلاً من الشاشة الروسية
+    // توجيه مباشر وفوري لشاشة التنزيل بدون الاستعانة بملفات مفقودة
     useFocusEffect(
       React.useCallback(() => {
-        if (isInitial) {
-          return navigation.replace('DownloadScreen');
-        }
-
-        return () => {};
-      }, [isInitial]),
+        return navigation.replace('DownloadScreen');
+      }, [navigation]),
     );
 
     return (
@@ -83,3 +56,4 @@ export const InitiationScreen = React.memo(
     );
   },
 );
+
