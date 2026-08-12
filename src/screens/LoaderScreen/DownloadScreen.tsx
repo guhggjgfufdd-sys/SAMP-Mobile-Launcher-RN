@@ -4,8 +4,6 @@ import RNFS from 'react-native-fs';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-
-// 🎯 الرابط المباشر للتحميل من GitHub
 const DOWNLOAD_URL = 'https://github.com/guhggjgfuf/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = () => {
@@ -15,13 +13,12 @@ export const DownloadScreen = () => {
 
   const startDownloadDirectly = async () => {
     setErrorDetails('');
-    setStatusText('جاري طلب الملف من السيرفر...');
+    setStatusText('جاري الاتصال بالسيرفر...');
     setCurrentBytes(0);
 
     const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
     try {
-      // إنشاء المجلد بأمان
       try {
         await RNFS.mkdir(RNFS.DocumentDirectoryPath);
       } catch (e) {}
@@ -29,15 +26,20 @@ export const DownloadScreen = () => {
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: archivePath,
+        // 🎯 ترويسة المتصفح لتجاوز حظر السيرفر ومنع قطع البث
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
+          'Accept': '*/*',
+        },
         progressDivider: 1,
-        connectionTimeout: 15000,
-        readTimeout: 15000,
+        connectionTimeout: 60000, // زيادة الوقت لضمان استقرار الشبكة
+        readTimeout: 60000,
         begin: (res) => {
           if (res.statusCode === 200 || res.statusCode === 302) {
-            setStatusText('تم الاتصال! جاري تحميل ملفات اللعبة...');
+            setStatusText('تم الاتصال! جاري تنزيل الملفات...');
           } else {
-            setStatusText(`خطأ من السيرفر! الكود: ${res.statusCode}`);
-            setErrorDetails(`الرابط أرجع رمز: ${res.statusCode} (تأكد من وجود الملف في Releases)`);
+            setStatusText(`خطأ سيرفر: ${res.statusCode}`);
+            setErrorDetails(`السيرفر أرجع كود: ${res.statusCode}`);
           }
         },
         progress: (res) => {
@@ -53,7 +55,7 @@ export const DownloadScreen = () => {
         setCurrentBytes(TOTAL_FILE_BYTES);
         setStatusText('تم التحميل بنجاح! 🚀');
       } else if (!errorDetails) {
-        setErrorDetails(`فشل التحميل. كود الاستجابة: ${result.statusCode}`);
+        setErrorDetails(`فشل التحميل. رمز الاستجابة: ${result.statusCode}`);
       }
     } catch (err: any) {
       setStatusText('تعذر الاتصال بالسيرفر!');
@@ -65,7 +67,6 @@ export const DownloadScreen = () => {
     startDownloadDirectly();
   }, []);
 
-  // حساب النسبة المئوية
   const progressPercent = TOTAL_FILE_BYTES > 0 
     ? Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100)) 
     : 0;
