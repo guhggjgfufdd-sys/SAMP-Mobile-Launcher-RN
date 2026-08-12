@@ -25,7 +25,7 @@ import {
 export const compareFileRecursion =
   ({ caches }: { caches: CacheType[] }): AppThunk =>
   async (dispatch, state) => {
-    const fileSize = 524288000; // 500 MB
+    const fileSize = 580869325; // 553.96 MB
     const fileName = '2.11.gtasa.zip';
 
     await AsyncStorage.removeItem('isSuccessDownload');
