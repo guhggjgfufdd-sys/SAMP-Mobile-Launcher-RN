@@ -4,7 +4,9 @@ import RNFS from 'react-native-fs';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-const DOWNLOAD_URL = 'https://github.com/guhggjgfuf/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+
+// 🎯 استخدام رابط مباشر يتتبع التوجيه التلقائي (Redirects)
+const DOWNLOAD_URL = 'https://github.com/guhggjgfuf/SAMP-Mobile-Launcher-RN/releases/latest/download/2.11.gtasa.zip';
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
@@ -26,20 +28,22 @@ export const DownloadScreen = () => {
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: archivePath,
-        // 🎯 ترويسة المتصفح لتجاوز حظر السيرفر ومنع قطع البث
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
           'Accept': '*/*',
         },
         progressDivider: 1,
-        connectionTimeout: 60000, // زيادة الوقت لضمان استقرار الشبكة
+        connectionTimeout: 60000,
         readTimeout: 60000,
         begin: (res) => {
           if (res.statusCode === 200 || res.statusCode === 302) {
             setStatusText('تم الاتصال! جاري تنزيل الملفات...');
+          } else if (res.statusCode === 404) {
+            setStatusText('خطأ 404: الملف غير موجود!');
+            setErrorDetails('الملف غير مرفوع في صفحة Releases على GitHub بهذا الاسم.');
           } else {
             setStatusText(`خطأ سيرفر: ${res.statusCode}`);
-            setErrorDetails(`السيرفر أرجع كود: ${res.statusCode}`);
+            setErrorDetails(`رمز الاستجابة: ${res.statusCode}`);
           }
         },
         progress: (res) => {
