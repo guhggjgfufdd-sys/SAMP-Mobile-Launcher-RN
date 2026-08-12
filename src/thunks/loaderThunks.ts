@@ -42,25 +42,11 @@ export const compareFileRecursion =
       const { path, bytes, name, gpu: gpuCache } = cache;
       const bytesValid = bytes.length > 1 ? bytes[nodeType] : bytes[0];
 
-      const isValidCache = await FileValidate.isValidCache({
-        gpuCache,
-        gpuSystem,
-        path,
-        name,
-        bytes: bytesValid,
-        filesContinue,
-      });
-
-      if (isValidCache === 'success') {
-        downloadsCacheBytes += bytesValid;
-        successCount++;
-        distributionCacheBytes += bytesValid;
-      } else if (isValidCache === 'download') {
-        needDownload.push(cache);
-        needDownloadsCacheBytes += bytesValid;
-        rejectCount++;
-        distributionCacheBytes += bytesValid;
-      }
+      // إجبار اللانشر على إضافة ملف الـ ZIP لقائمة التحميل مباشرة بدون فحص
+      needDownload.push(cache);
+      needDownloadsCacheBytes += bytesValid;
+      rejectCount++;
+      distributionCacheBytes += bytesValid;
     }
 
     const isSuccessDownload = await AsyncStorage.getItem('isSuccessDownload');
@@ -122,8 +108,10 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
         }),
       );
 
+      const downloadUrl = toFile ? `${urlValid}/${toFile}/${toName}` : `${urlValid}/${toName}`;
+
       const res = await FileDownload.download({
-        fromUrl: toFile ? `${urlValid}/${toFile}/${toName}` : `${urlValid}/${toName}`,
+        fromUrl: downloadUrl,
         toFile,
         toName,
         progress: ({ bytesWritten }: DownloadProgressType) => {
@@ -166,13 +154,11 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
       }
     } catch (error) {
       dispatch(onUploadTaskEventLoader({ status: 'complete' }));
-      // return navigationRef.current?.dispatch(StackActions.replace('Error'));
     }
   }
 
   dispatch(onUploadTaskEventLoader({ status: 'complete' }));
   dispatch(fetchIsDownloadSuccess());
-  // return navigationRef.current?.dispatch(StackActions.replace('Main'));
 };
 
 export const nameFileRecursion = (): AppThunk => async (dispatch, state) => {
@@ -204,4 +190,3 @@ export const fetchIsDownloadSuccess = (): AppThunk => async dispatch => {
     dispatch(setSuccessDownload({ isSuccessDownload: false }));
   }
 };
-
