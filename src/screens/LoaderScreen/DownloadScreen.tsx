@@ -1,5 +1,7 @@
 import KeepAwake from '@sayem314/react-native-keep-awake';
 import React, { useEffect } from 'react';
+import KeepAwake from '@sayem314/react-native-keep-awake';
+import React, { useEffect } from 'react';
 import { Dimensions, Text, View } from 'react-native';
 import * as Progress from 'react-native-progress';
 import { verticalScale } from 'react-native-size-matters';
@@ -15,7 +17,7 @@ import { styles } from '../../styles/LoaderStyle';
 import { compareFileRecursion, fetchStartDownload } from '../../thunks/loaderThunks';
 
 const width = Dimensions.get('window').width;
-const DEFAULT_TOTAL_BYTES = 524288000; // الحجم الكلي الافتراضي 500 ميجابايت
+const DEFAULT_TOTAL_BYTES = 580869325; // 553.96 MB الحجم الحقيقي المضبوط
 
 export const DownloadScreen = React.memo(() => {
   const download = useAppSelector(selectLoaderDownload);
@@ -31,7 +33,6 @@ export const DownloadScreen = React.memo(() => {
   const numberOfDownloads =
     (compare?.successCount || 0) + (download?.numberOfDownloads || 0);
 
-  // تحديد الحجم الكلي للعبة بدقة (500 ميجابايت)
   let totalCacheBytes = DEFAULT_TOTAL_BYTES;
   if (compare?.distributionCacheBytes && compare.distributionCacheBytes > 1000000) {
     totalCacheBytes = compare.distributionCacheBytes;
@@ -39,14 +40,10 @@ export const DownloadScreen = React.memo(() => {
     totalCacheBytes = download.needBytes;
   }
 
-  // الحجم المحمل حالياً
   const downloadedCacheBytes = download?.currentBytes || download?.downloadBytes || 0;
 
-  // النسبة المئوية محصورة دائماً من 0 إلى 100%
   const rawPercentage = (downloadedCacheBytes / totalCacheBytes) * 100;
   const percentage = Math.min(100, Math.max(0, Math.floor(rawPercentage)));
-
-  // نسبة حركة الشريط البنفسجي من 0.0 إلى 1.0 لتحريكه بسلاسة
   const progressRatio = Math.min(1.0, Math.max(0.0, downloadedCacheBytes / totalCacheBytes));
 
   return (
@@ -85,4 +82,3 @@ export const DownloadScreen = React.memo(() => {
     </LoaderContainer>
   );
 });
-
