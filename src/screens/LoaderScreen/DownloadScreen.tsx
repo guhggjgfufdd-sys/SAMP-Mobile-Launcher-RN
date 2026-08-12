@@ -1,18 +1,27 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-// 👈 تم تعديل المسار هنا للرجوع للمجلد الرئيسي الصحيح
 import { fetchStartDownload } from '../../thunks/loaderThunks';
 
 export const DownloadScreen = () => {
   const dispatch = useDispatch();
 
-  const { currentBytes, needBytes, fileName } = useSelector((state: any) => state.loader.download);
+  // 🛡️ حماية ضد الشاشة البيضاء: استخدام Optional Chaining وقيم افتراضية
+  const downloadState = useSelector((state: any) => state?.loader?.download) || {};
+  const currentBytes = Number(downloadState?.currentBytes || 0);
+  const needBytes = Number(downloadState?.needBytes || 0);
+  const fileName = downloadState?.fileName || '2.11.gtasa.zip';
 
+  // تشغيل دالة التنزيل بأمان عند فتح الشاشة
   useEffect(() => {
-    dispatch(fetchStartDownload() as any);
+    try {
+      dispatch(fetchStartDownload() as any);
+    } catch (error) {
+      console.log('Download start error:', error);
+    }
   }, [dispatch]);
 
+  // حساب النسبة المئوية
   const progressPercent = needBytes > 0 
     ? Math.min(100, Math.floor((currentBytes / needBytes) * 100)) 
     : 0;
@@ -25,7 +34,7 @@ export const DownloadScreen = () => {
       <Text style={styles.title}>جاري تحميل اللعبة...</Text>
       
       <Text style={styles.fileDetails}>
-        {fileName} {currentMB} MB / {totalMB} MB
+        {fileName} - {currentMB} MB / {totalMB} MB
       </Text>
 
       <View style={styles.progressBarBackground}>
@@ -42,23 +51,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111',
+    backgroundColor: '#111111',
   },
   title: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
   },
   fileDetails: {
-    color: '#aaa',
+    color: '#aaaaaa',
     fontSize: 14,
     marginBottom: 10,
   },
   progressBarBackground: {
     width: '80%',
     height: 12,
-    backgroundColor: '#333',
+    backgroundColor: '#333333',
     borderRadius: 6,
     overflow: 'hidden',
   },
