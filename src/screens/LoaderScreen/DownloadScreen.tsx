@@ -2,74 +2,68 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform } from 'react-native';
 import RNFS from 'react-native-fs';
 
-const TOTAL_FILE_BYTES = 580869325; // 553.96 MB الحجم الفعلي المطلوب
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري فحص الملفات المحلية...');
+  const [statusText, setStatusText] = useState('جاري بدء التشغيل...');
   const [errorDetails, setErrorDetails] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
-  
+
   const activeJobIdRef = useRef<number | null>(null);
 
-  // 1. طلب صلاحيات الإشعارات لأجهزة أندرويد
+  // 🎯 طلب الصلاحية بأمان بدون التسبب في كراش
   const requestNotificationPermission = async () => {
-    if (Platform.OS === 'android' && Platform.Version >= 33) {
-      try {
-        await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-        );
-      } catch (e) {
-        console.log('Notification permission error:', e);
+    try {
+      if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+        const perm = PermissionsAndroid.PERMISSIONS?.POST_NOTIFICATIONS || 'android.permission.POST_NOTIFICATIONS';
+        await PermissionsAndroid.request(perm as any);
       }
+    } catch (e) {
+      console.log('Permission request skipped:', e);
     }
   };
 
-  // 2. فحص هل الملف موجود ومكتمل سابقاً بالذاكرة
+  // 🎯 فحص الملف المحلي والوقاية من التحميل الوهمي
   const verifyExistingFile = async (filePath: string): Promise<boolean> => {
     try {
       const fileExists = await RNFS.exists(filePath);
       if (fileExists) {
         const stat = await RNFS.stat(filePath);
-        const actualSize = Number(stat.size);
+        const actualSize = Number(stat?.size || 0);
 
         if (actualSize === TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
-          setStatusText('تم التحقق: الملف مكتمل وجاهز! 🚀');
+          setStatusText('تم التحقق: اللعبة محمّلة وجاهزة بالكامل! 🚀');
           setIsCompleted(true);
-          return true; // مكتمل تماماً
+          return true;
         } else {
-          // الملف غير مكتمل أو تالف -> نقتلع الملف الفاسد لتنظيف الذاكرة
-          await RNFS.unlink(filePath);
+          // حذف الملف الناقص لتنظيف الذاكرة
+          await RNFS.unlink(filePath).catch(() => {});
         }
       }
     } catch (e) {
-      console.log('Error verifying file:', e);
+      console.log('Error verifying local file:', e);
     }
     return false;
   };
 
-  // 3. بدء التنزيل الفعلي والحقيقي
   const startDownloadDirectly = async () => {
     setErrorDetails('');
     setIsCompleted(false);
     setStatusText('جاري الاتصال بالسيرفر...');
-    setCurrentBytes(0);
 
     const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
     try {
       await requestNotificationPermission();
 
-      // فحص أولي قبل التحميل
-      const alreadyComplete = await verifyExistingFile(archivePath);
-      if (alreadyComplete) return;
+      const isAlreadyDone = await verifyExistingFile(archivePath);
+      if (isAlreadyDone) return;
 
-      try {
-        await RNFS.mkdir(RNFS.DocumentDirectoryPath);
-      } catch (e) {}
+      await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
 
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
@@ -79,10 +73,10 @@ export const DownloadScreen = () => {
           'Accept': '*/*',
         },
         progressDivider: 0,
-        progressInterval: 200,
+        progressInterval: 250,
         connectionTimeout: 60000,
         readTimeout: 60000,
-        background: true, // للسماح بالعمل في الخلفية
+        background: true,
         hasProgress: true,
         begin: (res) => {
           if (res.statusCode === 200 || res.statusCode === 302) {
@@ -93,7 +87,7 @@ export const DownloadScreen = () => {
           }
         },
         progress: (res) => {
-          const bytes = Number(res.bytesWritten);
+          const bytes = Number(res.bytesWritten || 0);
           setCurrentBytes(bytes);
           setStatusText('جاري تحميل اللعبة...');
         },
@@ -103,19 +97,18 @@ export const DownloadScreen = () => {
       const result = await downloadTask.promise;
 
       if (result.statusCode === 200 || result.statusCode === 302) {
-        // 🎯 فحص أمان حاسم: التأكد من مطابقة الحجم النهائي على الذاكرة
-        const fileStat = await RNFS.stat(archivePath);
-        const downloadedSizeBytes = Number(fileStat.size);
+        // فحص حجم الملف بعد الاكتمال
+        const fileStat = await RNFS.stat(archivePath).catch(() => null);
+        const downloadedSizeBytes = Number(fileStat?.size || 0);
 
         if (downloadedSizeBytes === TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
           setStatusText('تم التحميل والتحقق من سلامة الملف بنجاح! 🚀');
           setIsCompleted(true);
         } else {
-          // اكتشاف تحميل وهمي/ناقص
-          await RNFS.unlink(archivePath);
-          setStatusText('فشل التحقيق: الملف غير مكتمل!');
-          setErrorDetails(`الحجم المحمل (${(downloadedSizeBytes / (1024 * 1024)).toFixed(2)} MB) لا يطابق الحجم المطلوب (${(TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(2)} MB). تم حذف الملف غير المكتمل لسلامة التطبيق.`);
+          await RNFS.unlink(archivePath).catch(() => {});
+          setStatusText('فشل التحقق: الملف غير مكتمل!');
+          setErrorDetails('الحجم المحمّل غير مطابق للواقع. تم حذف الملف الفاسد.');
         }
       } else if (!errorDetails) {
         setErrorDetails(`فشل التحميل. رمز الاستجابة: ${result.statusCode}`);
