@@ -6,7 +6,7 @@ import { verticalScale } from 'react-native-size-matters';
 import { LoaderContainer } from '../../components/Provider/LoaderContainer';
 import { formatSizeUnits } from '../../helpers';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useAppSelector } from '../../hooks/useAppSelector';
+import { useAppSelector } from '../../hooks/useAppSelecter';
 import {
   selectCompare,
   selectLoaderDownload,
@@ -26,7 +26,7 @@ export const DownloadScreen = React.memo(() => {
     dispatch(fetchStartDownload());
   }, []);
 
-  // إضافة حماية من القيم الفارغة لتجنب الانهيار أو إعادة التوجيه
+  // إضافة حماية من القيم الفارغة لمنع الانهيار
   const numberOfDownloads =
     (compare?.successCount || 0) + (download?.numberOfDownloads || 0);
 
@@ -43,15 +43,15 @@ export const DownloadScreen = React.memo(() => {
   return (
     <LoaderContainer>
       <KeepAwake />
-      <Text style={[styles.title, styles.titleUppercase]}>Загрузка игры</Text>
+      <Text style={[styles.title, styles.titleUppercase]}>جاري تحميل اللعبة...</Text>
       <View>
         <Text style={styles.progressTitle}>
           <Text style={styles.progressName}>
-            {download?.fileName || 'Кэш игры'}
+            {download?.fileName || 'ملفات اللعبة'}
           </Text>
           <Text style={styles.progressMemory}>
             {' '}
-            {formatSizeUnits(download?.currentBytes || 0)} из{' '}
+            {formatSizeUnits(download?.currentBytes || 0)} من {' '}
             {formatSizeUnits(download?.needBytes || 0)}
           </Text>
         </Text>
@@ -61,15 +61,15 @@ export const DownloadScreen = React.memo(() => {
           animated={true}
           useNativeDriver={true}
           borderWidth={0}
-          color={'#647fd3'}
-          unfilledColor={'#2f3545'}
+          color={'#A647F4'}
+          unfilledColor={'#2F3545'}
           borderRadius={20}
           height={10}
           width={width - verticalScale(40)}
         />
 
         <Text style={styles.progressSubtitle}>
-          Загрузка файлов игры ({numberOfDownloads}) из{' '}
+          تحميل ملفات اللعبة ({numberOfDownloads}) من {' '}
           {(compare?.successCount || 0) + (compare?.rejectCount || 0)}
         </Text>
         <Text style={styles.progressPercent}>{loaders > 0 ? loaders : 0}%</Text>
