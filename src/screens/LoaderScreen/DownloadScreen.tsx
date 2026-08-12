@@ -3,21 +3,27 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStartDownload } from '../../thunks/loaderThunks';
 
+// الحجم الأساسي لملف اللعبة (553.96 MB)
+const TOTAL_FILE_BYTES = 580869325;
+
 export const DownloadScreen = () => {
   const dispatch = useDispatch();
 
-  // 🛡️ حماية ضد الشاشة البيضاء: استخدام Optional Chaining وقيم افتراضية
   const downloadState = useSelector((state: any) => state?.loader?.download) || {};
   const currentBytes = Number(downloadState?.currentBytes || 0);
-  const needBytes = Number(downloadState?.needBytes || 0);
+  
+  // 🎯 إذا كان الحجم القادم من Redux هو 0، يتم إظهار الحجم المباشر (553.96 MB) فوراً
+  const needBytes = Number(downloadState?.needBytes) > 0 
+    ? Number(downloadState?.needBytes) 
+    : TOTAL_FILE_BYTES;
+
   const fileName = downloadState?.fileName || '2.11.gtasa.zip';
 
-  // تشغيل دالة التنزيل بأمان عند فتح الشاشة
   useEffect(() => {
     try {
       dispatch(fetchStartDownload() as any);
     } catch (error) {
-      console.log('Download start error:', error);
+      console.log('Download error:', error);
     }
   }, [dispatch]);
 
