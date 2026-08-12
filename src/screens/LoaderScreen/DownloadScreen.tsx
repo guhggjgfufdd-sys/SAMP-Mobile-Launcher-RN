@@ -12,9 +12,10 @@ import {
   selectLoaderDownload,
 } from '../../selectors/loaderSelectors';
 import { styles } from '../../styles/LoaderStyle';
-import { fetchStartDownload } from '../../thunks/loaderThunks';
+import { compareFileRecursion, fetchStartDownload } from '../../thunks/loaderThunks';
 
 const width = Dimensions.get('window').width;
+const DEFAULT_TOTAL_BYTES = 524288000; // الحجم الكلي الافتراضي 500 ميجابايت
 
 export const DownloadScreen = React.memo(() => {
   const download = useAppSelector(selectLoaderDownload);
@@ -23,22 +24,30 @@ export const DownloadScreen = React.memo(() => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
+    dispatch(compareFileRecursion({ caches: [] }));
     dispatch(fetchStartDownload());
   }, []);
 
-  // إضافة حماية من القيم الفارغة لمنع الانهيار
   const numberOfDownloads =
     (compare?.successCount || 0) + (download?.numberOfDownloads || 0);
 
-  const totalCacheBytes = compare?.distributionCacheBytes || 1;
-  const downloadedCacheBytes =
-    (download?.downloadBytes || 0) + (compare?.downloadsCacheBytes || 0);
-
-  let loaders = Math.floor((downloadedCacheBytes * 100) / totalCacheBytes);
-
-  if (isNaN(loaders) || !isFinite(loaders)) {
-    loaders = 0;
+  // تحديد الحجم الكلي للعبة بدقة (500 ميجابايت)
+  let totalCacheBytes = DEFAULT_TOTAL_BYTES;
+  if (compare?.distributionCacheBytes && compare.distributionCacheBytes > 1000000) {
+    totalCacheBytes = compare.distributionCacheBytes;
+  } else if (download?.needBytes && download.needBytes > 1000000) {
+    totalCacheBytes = download.needBytes;
   }
+
+  // الحجم المحمل حالياً
+  const downloadedCacheBytes = download?.currentBytes || download?.downloadBytes || 0;
+
+  // النسبة المئوية محصورة دائماً من 0 إلى 100%
+  const rawPercentage = (downloadedCacheBytes / totalCacheBytes) * 100;
+  const percentage = Math.min(100, Math.max(0, Math.floor(rawPercentage)));
+
+  // نسبة حركة الشريط البنفسجي من 0.0 إلى 1.0 لتحريكه بسلاسة
+  const progressRatio = Math.min(1.0, Math.max(0.0, downloadedCacheBytes / totalCacheBytes));
 
   return (
     <LoaderContainer>
@@ -47,17 +56,16 @@ export const DownloadScreen = React.memo(() => {
       <View>
         <Text style={styles.progressTitle}>
           <Text style={styles.progressName}>
-            {download?.fileName || 'ملفات اللعبة'}
+            {download?.fileName || '2.11.gtasa.zip'}
           </Text>
           <Text style={styles.progressMemory}>
             {' '}
-            {formatSizeUnits(download?.currentBytes || 0)} من {' '}
-            {formatSizeUnits(download?.needBytes || 0)}
+            {formatSizeUnits(downloadedCacheBytes)} / {formatSizeUnits(totalCacheBytes)}
           </Text>
         </Text>
 
         <Progress.Bar
-          progress={loaders / 100 < 0.001 ? 0 : loaders / 100}
+          progress={progressRatio}
           animated={true}
           useNativeDriver={true}
           borderWidth={0}
@@ -70,10 +78,11 @@ export const DownloadScreen = React.memo(() => {
 
         <Text style={styles.progressSubtitle}>
           تحميل ملفات اللعبة ({numberOfDownloads}) من {' '}
-          {(compare?.successCount || 0) + (compare?.rejectCount || 0)}
+          {(compare?.successCount || 0) + (compare?.rejectCount || 1)}
         </Text>
-        <Text style={styles.progressPercent}>{loaders > 0 ? loaders : 0}%</Text>
+        <Text style={styles.progressPercent}>{percentage}%</Text>
       </View>
     </LoaderContainer>
   );
 });
+
