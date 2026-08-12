@@ -1,158 +1,127 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StackActions } from '@react-navigation/native';
+import notifee, { AndroidImportance } from '@notifee/react-native';
+import { createAsyncThunk } from '@reduxjs/toolkit';
 import RNFS from 'react-native-fs';
-import {
-  CacheType,
-  setCacheReject,
-  setCompare,
-  setDownloadLoader,
-  setSuccessDownload,
-} from '../actions/loaderActions';
-import {
-  DownloadProgressType,
-  FileDownload,
-  FileName,
-  FileValidate,
-  FileUnzip,
-} from '../features/fileManager';
-import { navigationRef } from '../routers/RootNavigation';
-import { AppThunk } from '../store/store';
-import {
-  createPushNotificationLoader,
-  onUploadTaskEventLoader,
-} from './notificationThunks';
+import RNBackgroundDownloader from 'react-native-background-downloader';
+import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
+import { RootState } from '../store';
 
-export const compareFileRecursion =
-  ({ caches }: { caches: CacheType[] }): AppThunk =>
-  async (dispatch, state) => {
-    const fileSize = 580869325; // 553.96 MB
-    const fileName = '2.11.gtasa.zip';
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB الحجم الكامل المضمون
 
-    await AsyncStorage.removeItem('isSuccessDownload');
-
-    const downloadItem = {
-      id: 1,
-      path: '',
-      name: fileName,
-      bytes: [fileSize, fileSize],
-      gpu: 'all',
-    };
-
+export const compareFileRecursion = createAsyncThunk(
+  'loader/compareFileRecursion',
+  async ({ caches }: { caches: any[] }, { dispatch }) => {
     dispatch(
       setCompare({
-        compare: {
-          successCount: 0,
-          rejectCount: 1,
-          distributionCacheBytes: fileSize,
-          downloadsCacheBytes: 0,
-          needDownloadsCacheBytes: fileSize,
-        },
-        needDownload: [downloadItem],
-        freeSpace: 10000000000,
-        isSuccessDownload: false,
-      }),
+        distributionCacheBytes: TOTAL_FILE_BYTES,
+        downloadsCacheBytes: 0,
+        rejectCount: 0,
+        successCount: 0,
+      })
     );
-  };
-
-export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
-  const fileSize = 524288000;
-  const fileName = '2.11.gtasa.zip';
-  const cdnBaseUrl =
-    'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0';
-
-  let needDownload = state().loader.needDownload;
-
-  if (!needDownload || needDownload.length === 0) {
-    needDownload = [
-      {
-        id: 1,
-        path: '',
-        name: fileName,
-        bytes: [fileSize, fileSize],
-        gpu: 'all',
-      },
-    ];
   }
+);
 
-  dispatch(createPushNotificationLoader());
+export const fetchStartDownload = createAsyncThunk(
+  'loader/fetchStartDownload',
+  async (_, { dispatch, getState }) => {
+    const archivePath = `${RNFS.DocumentDirectoryPath}/2.11.gtasa.zip`;
 
-  for await (const cache of needDownload) {
-    const { id, path: toFile, name: toName } = cache;
-    const downloadUrl = `${cdnBaseUrl}/${toName}`;
+    // إنشاء قناة الإشعارات
+    const channelId = await notifee.createChannel({
+      id: 'download_channel',
+      name: 'Game Download',
+      importance: AndroidImportance.LOW,
+    });
 
-    try {
-      dispatch(
-        setDownloadLoader({
-          download: {
-            fileName: toName,
-            currentBytes: 0,
-            needBytes: fileSize,
-            numberOfDownloads: 0,
-            downloadBytes: 0,
-          },
-        }),
-      );
+    // رابط تحميل ملف اللعبة
+    const downloadUrl = 'https://raw.githubusercontent.com/guhggjgfuf/SAMP-Mobile-Launcher-RN/main/2.11.gtasa.zip';
 
-      // 1. تنزيل الملف
-      const res = await FileDownload.download({
-        fromUrl: downloadUrl,
-        toFile: toFile || '',
-        toName: toName,
-        progress: ({ bytesWritten }: DownloadProgressType) => {
-          dispatch(
-            setDownloadLoader({
-              download: {
-                currentBytes: bytesWritten,
-                downloadBytes: bytesWritten,
-                needBytes: fileSize,
-              },
-            }),
-          );
-        },
-      });
-
-      // 2. بدء فك الضغط عبر نظام اللانشر المدمج
-      if (res.statusCode === 200) {
+    const task = RNBackgroundDownloader.download({
+      id: 'gtasa_download',
+      url: downloadUrl,
+      destination: archivePath,
+    })
+      .begin((expectedBytes) => {
         dispatch(
-          onUploadTaskEventLoader({
-            status: 'unzip',
-            file: toName,
-          }),
+          setLoaderDownload({
+            currentBytes: 0,
+            needBytes: TOTAL_FILE_BYTES,
+            fileName: '2.11.gtasa.zip',
+            numberOfDownloads: 0,
+          })
+        );
+      })
+      .progress((percent, bytesWritten, totalBytes) => {
+        dispatch(
+          setLoaderDownload({
+            currentBytes: bytesWritten,
+            needBytes: TOTAL_FILE_BYTES,
+            fileName: '2.11.gtasa.zip',
+            numberOfDownloads: 0,
+          })
         );
 
-        const targetDir = `${RNFS.ExternalStorageDirectoryPath}/Android/data/com.rockstargames.gtasa/files`;
-        const zipFilePath = `${targetDir}/${toName}`;
-
-        await RNFS.mkdir(targetDir).catch(() => {});
-
-        if (await RNFS.exists(zipFilePath)) {
-          // استخدام دالة فك الضغط المدمجة في اللانشر
-          await FileUnzip.unzip(zipFilePath, targetDir).catch(() => {});
-          await RNFS.unlink(zipFilePath).catch(() => {});
+        // تحديث إشعار شريط التقدم في الأندرويد
+        const progressPercent = Math.min(100, Math.floor((bytesWritten / TOTAL_FILE_BYTES) * 100));
+        notifee.displayNotification({
+          id: 'download_notification',
+          title: 'جاري تحميل ملفات اللعبة...',
+          body: `${progressPercent}% - (${(bytesWritten / 1024 / 1024).toFixed(1)}MB / 553.9MB)`,
+          android: {
+            channelId,
+            onlyAlertOnce: true,
+            progress: {
+              max: 100,
+              current: progressPercent,
+            },
+          },
+        });
+      })
+      .done(async () => {
+        // التحقق من الحجم الفعلي قبل إعلان الاكتشاب
+        const fileExists = await RNFS.exists(archivePath);
+        let fileSize = 0;
+        if (fileExists) {
+          const stat = await RNFS.stat(archivePath);
+          fileSize = stat.size;
         }
 
-        dispatch(setCacheReject(id));
-      }
-    } catch (error) {
-      console.error('Download/Unzip Error:', error);
-      dispatch(onUploadTaskEventLoader({ status: 'complete' }));
-    }
+        // إذا كان الحجم المحمل أقل من 500 ميجابايت، فهذا انقطاع وهمي للشبكة ولن نعتبره اكتمالاً
+        if (fileSize < 520000000) {
+          notifee.displayNotification({
+            id: 'download_notification',
+            title: 'توقف التحميل بسبب الشبكة',
+            body: 'جاري إعادة محاولة التحميل...',
+            android: { channelId },
+          });
+          // إعادة تشغيل التحميل للتكملة
+          dispatch(fetchStartDownload());
+          return;
+        }
+
+        // إشعار الاكتمال الحقيقي
+        await notifee.displayNotification({
+          id: 'download_notification',
+          title: 'تم اكتمال تحميل اللعبة بنجاح!',
+          body: 'جاهز للتثبيت والتشغيل.',
+          android: { channelId },
+        });
+
+        dispatch(
+          setLoaderDownload({
+            currentBytes: TOTAL_FILE_BYTES,
+            needBytes: TOTAL_FILE_BYTES,
+            fileName: '2.11.gtasa.zip',
+            numberOfDownloads: 1,
+          })
+        );
+      })
+      .error((error) => {
+        console.log('Download error:', error);
+        // إعادة التوصيل تلقائياً عند حدوث خطأ في الشبكة
+        setTimeout(() => {
+          dispatch(fetchStartDownload());
+        }, 3000);
+      });
   }
-
-  dispatch(onUploadTaskEventLoader({ status: 'complete' }));
-  dispatch(fetchIsDownloadSuccess());
-};
-
-export const nameFileRecursion = (): AppThunk => async (dispatch, state) => {
-  return true;
-};
-
-export const fetchIsDownloadSuccess = (): AppThunk => async dispatch => {
-  try {
-    await AsyncStorage.setItem('isSuccessDownload', 'true');
-    dispatch(setSuccessDownload({ isSuccessDownload: true }));
-  } catch (error) {
-    dispatch(setSuccessDownload({ isSuccessDownload: false }));
-  }
-};
-
+);
