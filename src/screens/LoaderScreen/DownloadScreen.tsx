@@ -4,13 +4,11 @@ import RNFS from 'react-native-fs';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-
-// 🎯 الرابط المباشر الصحيح للملف
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري بدء الاتصال...');
+  const [statusText, setStatusText] = useState('جاري الاتصال بالسيرفر...');
   const [errorDetails, setErrorDetails] = useState('');
 
   const startDownloadDirectly = async () => {
@@ -32,7 +30,9 @@ export const DownloadScreen = () => {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
           'Accept': '*/*',
         },
-        progressDivider: 1,
+        // 🎯 إلغاء التقسيم المئوي وجعل التحديث مستمراً ومباشراً
+        progressDivider: 0,
+        progressInterval: 200, // تحديث الشاشة كل 200 مللي ثانية للنعومة
         connectionTimeout: 60000,
         readTimeout: 60000,
         begin: (res) => {
