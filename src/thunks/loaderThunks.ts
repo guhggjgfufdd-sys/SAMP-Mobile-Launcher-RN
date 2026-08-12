@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StackActions } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
-import { unzip } from 'react-native-zip-archive';
 import {
   CacheType,
   setCacheReject,
@@ -14,6 +13,7 @@ import {
   FileDownload,
   FileName,
   FileValidate,
+  FileUnzip,
 } from '../features/fileManager';
 import { navigationRef } from '../routers/RootNavigation';
 import { AppThunk } from '../store/store';
@@ -28,7 +28,6 @@ export const compareFileRecursion =
     const fileSize = 524288000; // 500 MB
     const fileName = '2.11.gtasa.zip';
 
-    // مسح الحالات القديمة لضمان بدء تحميل جديد ونظيف
     await AsyncStorage.removeItem('isSuccessDownload');
 
     const downloadItem = {
@@ -112,7 +111,7 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
         },
       });
 
-      // 2. بعد انتهاء التحميل بنجاح -> بدء فك الضغط تلقائياً
+      // 2. بدء فك الضغط عبر نظام اللانشر المدمج
       if (res.statusCode === 200) {
         dispatch(
           onUploadTaskEventLoader({
@@ -124,20 +123,18 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
         const targetDir = `${RNFS.ExternalStorageDirectoryPath}/Android/data/com.rockstargames.gtasa/files`;
         const zipFilePath = `${targetDir}/${toName}`;
 
-        // التأكد من وجود مجلد اللعبة الرئيسي
         await RNFS.mkdir(targetDir).catch(() => {});
 
-        // فك ضغط ملف الكاش داخل مجلد اللعبة
         if (await RNFS.exists(zipFilePath)) {
-          await unzip(zipFilePath, targetDir);
-          // حذف الملف المضغوط تلقائياً لتوفير المساحة
+          // استخدام دالة فك الضغط المدمجة في اللانشر
+          await FileUnzip.unzip(zipFilePath, targetDir).catch(() => {});
           await RNFS.unlink(zipFilePath).catch(() => {});
         }
 
         dispatch(setCacheReject(id));
       }
     } catch (error) {
-      console.error('Download or Unzip Error:', error);
+      console.error('Download/Unzip Error:', error);
       dispatch(onUploadTaskEventLoader({ status: 'complete' }));
     }
   }
