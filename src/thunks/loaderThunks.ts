@@ -1,9 +1,8 @@
-import { Alert } from 'react-native';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import RNFS from 'react-native-fs';
 import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
 
-const TOTAL_FILE_BYTES = 580869325;
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
@@ -26,7 +25,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
 
   const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
-  // 1. تجربة إنشاء الإشعارات مع التعامل مع الأخطاء
+  // 1. إنشاء قناة الإشعارات
   let channelId = 'download_channel';
   try {
     channelId = await notifee.createChannel({
@@ -34,11 +33,11 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       name: 'Game Download',
       importance: AndroidImportance.LOW,
     });
-  } catch (e: any) {
-    console.log('Notifee Error:', e);
+  } catch (e) {
+    console.log('Channel setup error:', e);
   }
 
-  // 2. تصفير العداد
+  // 2. تصفير الواجهة
   dispatch(
     setLoaderDownload({
       currentBytes: 0,
@@ -48,21 +47,19 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     })
   );
 
-  // 3. بدء التحميل مع إظهار أخطاء الأندرويد فوراً
+  // 3. بدء التحميل المباشر داخل التطبيق (بدون استخدام DownloadManager النظام)
   const downloadTask = RNFS.downloadFile({
     fromUrl: DOWNLOAD_URL,
     toFile: archivePath,
     progressDivider: 1,
-    background: true,
+    background: false, // 👈 تم تغييرها إلى false لحل مشكلة التجميد عند 0 Bytes
     begin: (res) => {
-      console.log('HTTP Status Code:', res.statusCode);
-      if (res.statusCode >= 400) {
-        Alert.alert('خطأ في السيرفر', `السيرفر أرجع كود خطأ: ${res.statusCode}`);
-      }
+      console.log('Download started HTTP status:', res.statusCode);
     },
     progress: (res) => {
       const currentBytes = Number(res.bytesWritten);
 
+      // تحديث شاشة اللانشر فوراً
       dispatch(
         setLoaderDownload({
           currentBytes: currentBytes,
@@ -72,17 +69,23 @@ export const fetchStartDownload = () => async (dispatch: any) => {
         })
       );
 
-      // تحديث الإشعار
+      // تحديث شريط الإشعارات العلوي
+      const progressPercent = Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100));
+      const mbCurrent = (currentBytes / (1024 * 1024)).toFixed(1);
+      const mbTotal = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(1);
+
       try {
-        const progressPercent = Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100));
         notifee.displayNotification({
           id: 'download_notification',
           title: 'جاري تحميل ملفات اللعبة...',
-          body: `${progressPercent}%`,
+          body: `${progressPercent}% - (${mbCurrent} MB / ${mbTotal} MB)`,
           android: {
             channelId,
             onlyAlertOnce: true,
-            progress: { max: 100, current: progressPercent },
+            progress: {
+              max: 100,
+              current: progressPercent,
+            },
           },
         });
       } catch (e) {}
@@ -90,24 +93,52 @@ export const fetchStartDownload = () => async (dispatch: any) => {
   });
 
   try {
-    const result = await downloadTask.promise;
+    await downloadTask.promise;
     isDownloadingActive = false;
 
-    if (result.statusCode === 200 || result.statusCode === 302) {
-      dispatch(
-        setLoaderDownload({
-          currentBytes: TOTAL_FILE_BYTES,
-          needBytes: TOTAL_FILE_BYTES,
-          fileName: FILE_NAME,
-          numberOfDownloads: 1,
-        })
-      );
-    } else {
-      Alert.alert('فشل التنزيل', `كود الاستجابة: ${result.statusCode}`);
+    // 4. فحص الحجم الفعلي للحد من التحميل الوهمي عند انقطاع النت
+    let downloadedSize = 0;
+    if (await RNFS.exists(archivePath)) {
+      const stat = await RNFS.stat(archivePath);
+      downloadedSize = Number(stat.size);
     }
-  } catch (error: any) {
+
+    if (downloadedSize < TOTAL_FILE_BYTES - 100000) {
+      await notifee.displayNotification({
+        id: 'download_notification',
+        title: 'انقطع الاتصال بالشبكة',
+        body: 'جاري إعادة المحاولة تلقائياً...',
+        android: { channelId },
+      });
+
+      setTimeout(() => {
+        dispatch(fetchStartDownload() as any);
+      }, 3000);
+      return;
+    }
+
+    // 5. إعلان النجاح الحقيقي
+    await notifee.displayNotification({
+      id: 'download_notification',
+      title: 'تم اكتمال التحميل بنجاح! 🚀',
+      body: 'جاهز الآن لتثبيت واستخراج اللعبة.',
+      android: { channelId },
+    });
+
+    dispatch(
+      setLoaderDownload({
+        currentBytes: TOTAL_FILE_BYTES,
+        needBytes: TOTAL_FILE_BYTES,
+        fileName: FILE_NAME,
+        numberOfDownloads: 1,
+      })
+    );
+  } catch (error) {
+    console.log('Download Error:', error);
     isDownloadingActive = false;
-    // إظهار نافذة تنبيه على الجوال بالخطأ الفعلي
-    Alert.alert('خطأ تنزيل أندرويد', error?.message || JSON.stringify(error));
+
+    setTimeout(() => {
+      dispatch(fetchStartDownload() as any);
+    }, 4000);
   }
 };
