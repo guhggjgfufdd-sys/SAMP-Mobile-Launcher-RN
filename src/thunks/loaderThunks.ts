@@ -25,6 +25,11 @@ export const fetchStartDownload = () => async (dispatch: any) => {
 
   const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
+  // التأكد من وجود المجلد
+  try {
+    await RNFS.mkdir(RNFS.DocumentDirectoryPath);
+  } catch (e) {}
+
   // 1. إعداد قناة الإشعارات
   let channelId = 'download_channel';
   try {
@@ -37,7 +42,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     console.log('Notification channel error:', e);
   }
 
-  // 2. تصفير الواجهة
+  // 2. تصفير واجهة اللانشر
   dispatch(
     setLoaderDownload({
       currentBytes: 0,
@@ -47,42 +52,37 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     })
   );
 
-  // 3. جلب الرابط المباشر الحقيقي بعد عبور تحويلات GitHub (302 Redirect)
+  // 3. استخراج الرابط المباشر المباشر المرفوع على الأمازون (objects.githubusercontent.com)
   let finalUrl = RAW_DOWNLOAD_URL;
   try {
+    const controller = new AbortController();
     const response = await fetch(RAW_DOWNLOAD_URL, {
-      method: 'HEAD',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      },
+      method: 'GET',
+      signal: controller.signal,
     });
+
     if (response.url && response.url !== RAW_DOWNLOAD_URL) {
       finalUrl = response.url;
-      console.log('Resolved direct URL successfully:', finalUrl);
+      console.log('Direct Amazon S3 URL extracted:', finalUrl);
     }
+    controller.abort(); // إلغاء السحب عبر fetch بعد أخذ الرابط المباشر
   } catch (e) {
-    console.log('Redirect resolution failed, using raw URL:', e);
+    console.log('Fetched redirect successfully or skipped:', e);
   }
 
-  // 4. بدء التنزيل بالرابط المباشر وهوية متصفح أندرويد
+  // 4. بدء التحميل بالرابط المباشر النهائي
   const downloadTask = RNFS.downloadFile({
     fromUrl: finalUrl,
     toFile: archivePath,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      'Accept': '*/*',
-    },
     progressDivider: 1,
     background: false,
-    connectionTimeout: 20000,
-    readTimeout: 20000,
     begin: (res) => {
-      console.log('Download started, HTTP status code:', res.statusCode);
+      console.log('Download task started with HTTP code:', res.statusCode);
     },
     progress: (res) => {
       const currentBytes = Number(res.bytesWritten);
 
-      // تحديث شاشة اللانشر
+      // تحديث شاشة التطبيق
       dispatch(
         setLoaderDownload({
           currentBytes: currentBytes,
@@ -119,7 +119,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
     await downloadTask.promise;
     isDownloadingActive = false;
 
-    // 5. فحص الحجم الفعلي لمنع التحميل الوهمي عند انقطاع النت
+    // 5. التأكد من حجم الملف لمنع التحميل الوهمي
     let downloadedSize = 0;
     if (await RNFS.exists(archivePath)) {
       const stat = await RNFS.stat(archivePath);
@@ -140,7 +140,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       return;
     }
 
-    // 6. إعلان النجاح الفعلي
+    // 6. اكتمال التحميل الحقيقي
     await notifee.displayNotification({
       id: 'download_notification',
       title: 'تم اكتمال التحميل بنجاح! 🚀',
@@ -157,7 +157,7 @@ export const fetchStartDownload = () => async (dispatch: any) => {
       })
     );
   } catch (error) {
-    console.log('Download failed, retrying in 4s:', error);
+    console.log('Download failed, retrying:', error);
     isDownloadingActive = false;
 
     setTimeout(() => {
