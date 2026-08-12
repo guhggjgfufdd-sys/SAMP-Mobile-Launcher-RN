@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StackActions } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
+import { unzip } from 'react-native-zip-archive';
 import {
   CacheType,
   setCacheReject,
@@ -27,7 +28,7 @@ export const compareFileRecursion =
     const fileSize = 524288000; // 500 MB
     const fileName = '2.11.gtasa.zip';
 
-    // 1. مسح حالة التحميل السابقة المخبأة في ذاكرة الهاتف
+    // مسح الحالات القديمة لضمان بدء تحميل جديد ونظيف
     await AsyncStorage.removeItem('isSuccessDownload');
 
     const downloadItem = {
@@ -38,9 +39,6 @@ export const compareFileRecursion =
       gpu: 'all',
     };
 
-    const needDownload = [downloadItem];
-
-    // 2. تحديث الشاشة فوراً بالحجم الحقيقي 500 ميجابايت
     dispatch(
       setCompare({
         compare: {
@@ -50,7 +48,7 @@ export const compareFileRecursion =
           downloadsCacheBytes: 0,
           needDownloadsCacheBytes: fileSize,
         },
-        needDownload: needDownload,
+        needDownload: [downloadItem],
         freeSpace: 10000000000,
         isSuccessDownload: false,
       }),
@@ -65,7 +63,6 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
 
   let needDownload = state().loader.needDownload;
 
-  // في حال كانت القائمة فارغة لأي سبب، يتم ملؤها تلقائياً
   if (!needDownload || needDownload.length === 0) {
     needDownload = [
       {
@@ -78,25 +75,11 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
     ];
   }
 
-  let numberOfDownloads = 0;
-  let downloadBytes = 0;
-
   dispatch(createPushNotificationLoader());
 
-  dispatch(
-    onUploadTaskEventLoader({
-      status: 'download',
-      sizeFile: 0,
-      currentFile: 1,
-      size: 1,
-      current: 1,
-      file: fileName,
-    }),
-  );
-
   for await (const cache of needDownload) {
-    const { id, path: toFile, name: toName, bytes } = cache;
-    const bytesValid = bytes[0] || fileSize;
+    const { id, path: toFile, name: toName } = cache;
+    const downloadUrl = `${cdnBaseUrl}/${toName}`;
 
     try {
       dispatch(
@@ -104,15 +87,14 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
           download: {
             fileName: toName,
             currentBytes: 0,
-            needBytes: bytesValid,
+            needBytes: fileSize,
             numberOfDownloads: 0,
             downloadBytes: 0,
           },
         }),
       );
 
-      const downloadUrl = `${cdnBaseUrl}/${toName}`;
-
+      // 1. تنزيل الملف
       const res = await FileDownload.download({
         fromUrl: downloadUrl,
         toFile: toFile || '',
@@ -123,41 +105,39 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
               download: {
                 currentBytes: bytesWritten,
                 downloadBytes: bytesWritten,
-                needBytes: bytesValid,
+                needBytes: fileSize,
               },
             }),
           );
         },
       });
 
+      // 2. بعد انتهاء التحميل بنجاح -> بدء فك الضغط تلقائياً
       if (res.statusCode === 200) {
-        numberOfDownloads++;
-        downloadBytes += bytesValid;
-
         dispatch(
           onUploadTaskEventLoader({
-            status: 'download',
-            sizeFile: 1,
-            currentFile: 1,
-            size: 1,
-            current: 1,
+            status: 'unzip',
             file: toName,
           }),
         );
 
-        dispatch(
-          setDownloadLoader({
-            download: {
-              numberOfDownloads: 1,
-              downloadBytes: bytesValid,
-            },
-          }),
-        );
+        const targetDir = `${RNFS.ExternalStorageDirectoryPath}/Android/data/com.rockstargames.gtasa/files`;
+        const zipFilePath = `${targetDir}/${toName}`;
+
+        // التأكد من وجود مجلد اللعبة الرئيسي
+        await RNFS.mkdir(targetDir).catch(() => {});
+
+        // فك ضغط ملف الكاش داخل مجلد اللعبة
+        if (await RNFS.exists(zipFilePath)) {
+          await unzip(zipFilePath, targetDir);
+          // حذف الملف المضغوط تلقائياً لتوفير المساحة
+          await RNFS.unlink(zipFilePath).catch(() => {});
+        }
 
         dispatch(setCacheReject(id));
       }
     } catch (error) {
-      console.error('Download error:', error);
+      console.error('Download or Unzip Error:', error);
       dispatch(onUploadTaskEventLoader({ status: 'complete' }));
     }
   }
