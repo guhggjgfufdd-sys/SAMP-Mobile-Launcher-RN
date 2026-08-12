@@ -3,9 +3,9 @@ import notifee, { AndroidImportance } from '@notifee/react-native';
 import RNFS from 'react-native-fs';
 import { setCompare, setLoaderDownload } from '../reducers/loaderReducer';
 
-const TOTAL_FILE_BYTES = 580869325; // الحجم المطلوب 553.96 MB
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
 const FILE_NAME = '2.11.gtasa.zip';
-const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+const GITHUB_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 let activeJobId: number | null = null;
 
@@ -21,143 +21,87 @@ export const compareFileRecursion = ({ caches }: { caches: any[] }) => async (di
 };
 
 export const fetchStartDownload = () => async (dispatch: any) => {
-  // 1. إيقاف أي عملية تحميل معلقة لتفادي التجميد
-  if (activeJobId !== null) {
-    try {
-      RNFS.stopDownload(activeJobId);
-    } catch (e) {}
-    activeJobId = null;
-  }
-
-  // 📍 [مكان حفظ الملف]: المجلد الداخلي الخاص بالتطبيق
-  const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
+  // 🔴 اختبار مباشر: إجبار الهاتف على إظهار نافذة تنبيه أول ما يشتغل الكود
+  Alert.alert('تنبيه فحص', 'تم تشغيل كود التحميل بنجاح!');
 
   try {
-    await RNFS.mkdir(RNFS.DocumentDirectoryPath);
-  } catch (e) {}
-
-  // 2. إعداد قناة الإشعارات
-  let channelId = 'download_channel';
-  try {
-    channelId = await notifee.createChannel({
-      id: 'download_channel',
-      name: 'Game Download',
-      importance: AndroidImportance.LOW,
-    });
-  } catch (e) {}
-
-  // 3. تصفير الواجهة
-  dispatch(
-    setLoaderDownload({
-      currentBytes: 0,
-      needBytes: TOTAL_FILE_BYTES,
-      fileName: FILE_NAME,
-      numberOfDownloads: 0,
-    })
-  );
-
-  // 📁 [فحص الملفات المحفوظة سابقاً]: إذا كان الملف محملاً بـ 100% سابقاً يتخطى التحميل
-  try {
-    if (await RNFS.exists(archivePath)) {
-      const stat = await RNFS.stat(archivePath);
-      if (Number(stat.size) >= TOTAL_FILE_BYTES - 100000) {
-        dispatch(
-          setLoaderDownload({
-            currentBytes: TOTAL_FILE_BYTES,
-            needBytes: TOTAL_FILE_BYTES,
-            fileName: FILE_NAME,
-            numberOfDownloads: 1,
-          })
-        );
-        return;
-      }
-      // إذا كان الملف ناقصاً أو معطوباً، يحذفه لنبدأ تحميلاً كاملاً
-      await RNFS.unlink(archivePath);
-    }
-  } catch (e) {}
-
-  // 4. بدء التحميل وتخزين البيانات في المسار المحفوظ
-  const downloadTask = RNFS.downloadFile({
-    fromUrl: DOWNLOAD_URL,
-    toFile: archivePath, // 👈 هنا يتم حفظ الأجزاء المحملة في الذاكرة
-    progressDivider: 1,
-    background: false,
-    connectionTimeout: 30000,
-    readTimeout: 30000,
-    progress: (res) => {
-      const currentBytes = Number(res.bytesWritten);
-
-      // تحديث واجهة اللانشر
-      dispatch(
-        setLoaderDownload({
-          currentBytes: currentBytes,
-          needBytes: TOTAL_FILE_BYTES,
-          fileName: FILE_NAME,
-          numberOfDownloads: 0,
-        })
-      );
-
-      // تحديث شريط الإشعارات العلوي
-      const progressPercent = Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100));
-      const mbCurrent = (currentBytes / (1024 * 1024)).toFixed(1);
-      const mbTotal = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(1);
-
-      try {
-        notifee.displayNotification({
-          id: 'download_notification',
-          title: 'جاري تحميل ملفات اللعبة...',
-          body: `${progressPercent}% - (${mbCurrent} MB / ${mbTotal} MB)`,
-          android: {
-            channelId,
-            onlyAlertOnce: true,
-            progress: { max: 100, current: progressPercent },
-          },
-        });
-      } catch (e) {}
-    },
-  });
-
-  activeJobId = downloadTask.jobId;
-
-  try {
-    await downloadTask.promise;
-    activeJobId = null;
-
-    // 🛑 [منع التحميل الوهمي]: الفحص الحقيقي لحجم الملف المحفوظ على الذاكرة
-    let downloadedSize = 0;
-    if (await RNFS.exists(archivePath)) {
-      const stat = await RNFS.stat(archivePath);
-      downloadedSize = Number(stat.size);
-    }
-
-    // لو انقطع النت واكتمل التحميل شكلياً بحجم أقل من (553.96 MB)
-    if (downloadedSize < TOTAL_FILE_BYTES - 100000) {
-      Alert.alert('تحميل غير مكتمل', 'انقطع الاتصال قبل إكمال الملف. جاري إعادة المحاولة...');
-      setTimeout(() => {
-        dispatch(fetchStartDownload() as any);
-      }, 3000);
+    // 1. فحص هل مكتبة RNFS محملة بالجهاز
+    if (!RNFS || !RNFS.DocumentDirectoryPath) {
+      Alert.alert('خطأ مكتبة', 'مكتبة RNFS غير معرفة في النظام!');
       return;
     }
 
-    // ✅ اكتمال التحميل الحقيقي والتأكد من الملف 100%
-    await notifee.displayNotification({
-      id: 'download_notification',
-      title: 'تم اكتمال التحميل بنجاح! 🚀',
-      body: 'جاهز الآن لتثبيت واستخراج اللعبة.',
-      android: { channelId },
-    });
+    const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
+    // 2. تجديد الرابط المباشر لتفادي إعادة التوجيه (302 Redirect)
+    let finalDownloadUrl = GITHUB_URL;
+    try {
+      const response = await fetch(GITHUB_URL, { method: 'HEAD' });
+      if (response.url && response.url !== GITHUB_URL) {
+        finalDownloadUrl = response.url;
+      }
+    } catch (e) {}
+
+    // 3. تصفير واجهة اللانشر
     dispatch(
       setLoaderDownload({
-        currentBytes: TOTAL_FILE_BYTES,
+        currentBytes: 0,
         needBytes: TOTAL_FILE_BYTES,
         fileName: FILE_NAME,
-        numberOfDownloads: 1,
+        numberOfDownloads: 0,
       })
     );
-  } catch (error: any) {
+
+    // 4. إيقاف أي عملية سابقة
+    if (activeJobId !== null) {
+      try {
+        RNFS.stopDownload(activeJobId);
+      } catch (e) {}
+      activeJobId = null;
+    }
+
+    // 5. بدء التنزيل بالمكتبة
+    const downloadTask = RNFS.downloadFile({
+      fromUrl: finalDownloadUrl,
+      toFile: archivePath,
+      progressDivider: 1,
+      background: false,
+      connectionTimeout: 30000,
+      readTimeout: 30000,
+      begin: (res) => {
+        Alert.alert('بدء الاتصال', `تم الاتصال بالسيرفر بكود: ${res.statusCode}`);
+      },
+      progress: (res) => {
+        const currentBytes = Number(res.bytesWritten);
+        dispatch(
+          setLoaderDownload({
+            currentBytes: currentBytes,
+            needBytes: TOTAL_FILE_BYTES,
+            fileName: FILE_NAME,
+            numberOfDownloads: 0,
+          })
+        );
+      },
+    });
+
+    activeJobId = downloadTask.jobId;
+    const result = await downloadTask.promise;
     activeJobId = null;
-    console.log('Download Error:', error);
-    Alert.alert('خطأ أثناء التنزيل', error?.message || 'تعذر الاتصال بالسيرفر');
+
+    if (result.statusCode === 200 || result.statusCode === 302) {
+      Alert.alert('نجاح', 'تم اكتمال التحميل 100%!');
+      dispatch(
+        setLoaderDownload({
+          currentBytes: TOTAL_FILE_BYTES,
+          needBytes: TOTAL_FILE_BYTES,
+          fileName: FILE_NAME,
+          numberOfDownloads: 1,
+        })
+      );
+    } else {
+      Alert.alert('خطأ سيرفر', `السيرفر أرجع كود: ${result.statusCode}`);
+    }
+  } catch (outerError: any) {
+    Alert.alert('خطأ عام', outerError?.message || String(outerError));
   }
 };
