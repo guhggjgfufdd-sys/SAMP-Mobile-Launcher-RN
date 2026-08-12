@@ -1,5 +1,5 @@
 import { setDistribution } from '../actions/distributionActions';
-import { setCompare } from '../actions/loaderActions';
+import { compareFileRecursion } from './loaderThunks';
 import { AppThunk } from '../store/store';
 
 export const fetchDistribution = (): AppThunk => async (dispatch) => {
@@ -7,7 +7,7 @@ export const fetchDistribution = (): AppThunk => async (dispatch) => {
     const cdnBaseUrl = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0';
     const fileName = '2.11.gtasa.zip';
     
-    // حجم الملف: 500 ميجابايت بالبايتات بالضبط
+    // حجم 500 ميجابايت بالبايت
     const fileSize = 524288000; 
 
     const cacheNode = [
@@ -28,21 +28,9 @@ export const fetchDistribution = (): AppThunk => async (dispatch) => {
       }),
     );
 
-    dispatch(
-      setCompare({
-        compare: {
-          successCount: 0,
-          rejectCount: 1,
-          distributionCacheBytes: fileSize,
-          downloadsCacheBytes: 0,
-          needDownloadsCacheBytes: fileSize,
-        },
-        needDownload: cacheNode,
-        freeSpace: 10000000000,
-        isSuccessDownload: false,
-      }),
-    );
+    dispatch(compareFileRecursion({ caches: cacheNode }));
   } catch (error) {
-    console.error('Error setting local distribution:', error);
+    console.error('Error setting distribution:', error);
   }
 };
+
