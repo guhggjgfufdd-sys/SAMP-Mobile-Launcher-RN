@@ -24,54 +24,59 @@ import {
 export const compareFileRecursion =
   ({ caches }: { caches: CacheType[] }): AppThunk =>
   async (dispatch, state) => {
-    const filesContinue = state().distribution.filesContinue;
-    const gpuSystem = state().app.gpu;
-    const nodeType = state().settings.nodeType;
-    const { freeSpace } = await RNFS.getFSInfo();
+    const fileSize = 524288000; // 500 MB
+    const fileName = '2.11.gtasa.zip';
 
-    let [
-      needDownload,
-      rejectCount,
-      successCount,
-      distributionCacheBytes,
-      downloadsCacheBytes,
-      needDownloadsCacheBytes,
-    ] = [[], 0, 0, 0, 0, 0];
+    // 1. مسح حالة التحميل السابقة المخبأة في ذاكرة الهاتف
+    await AsyncStorage.removeItem('isSuccessDownload');
 
-    for await (const cache of caches) {
-      const { path, bytes, name, gpu: gpuCache } = cache;
-      const bytesValid = bytes.length > 1 ? bytes[nodeType] : bytes[0];
+    const downloadItem = {
+      id: 1,
+      path: '',
+      name: fileName,
+      bytes: [fileSize, fileSize],
+      gpu: 'all',
+    };
 
-      // إجبار اللانشر على إضافة ملف الـ ZIP لقائمة التحميل مباشرة بدون فحص
-      needDownload.push(cache);
-      needDownloadsCacheBytes += bytesValid;
-      rejectCount++;
-      distributionCacheBytes += bytesValid;
-    }
+    const needDownload = [downloadItem];
 
-    const isSuccessDownload = await AsyncStorage.getItem('isSuccessDownload');
-
+    // 2. تحديث الشاشة فوراً بالحجم الحقيقي 500 ميجابايت
     dispatch(
       setCompare({
         compare: {
-          successCount,
-          rejectCount,
-          distributionCacheBytes,
-          downloadsCacheBytes,
-          needDownloadsCacheBytes,
+          successCount: 0,
+          rejectCount: 1,
+          distributionCacheBytes: fileSize,
+          downloadsCacheBytes: 0,
+          needDownloadsCacheBytes: fileSize,
         },
-        needDownload,
-        freeSpace,
-        isSuccessDownload: isSuccessDownload === 'true' ? true : false,
+        needDownload: needDownload,
+        freeSpace: 10000000000,
+        isSuccessDownload: false,
       }),
     );
   };
 
 export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
-  const { cdnCache } = state().distribution;
-  const { rejectCount } = state().loader.compare;
-  const { needDownload } = state().loader;
-  const nodeType = state().settings.nodeType;
+  const fileSize = 524288000;
+  const fileName = '2.11.gtasa.zip';
+  const cdnBaseUrl =
+    'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0';
+
+  let needDownload = state().loader.needDownload;
+
+  // في حال كانت القائمة فارغة لأي سبب، يتم ملؤها تلقائياً
+  if (!needDownload || needDownload.length === 0) {
+    needDownload = [
+      {
+        id: 1,
+        path: '',
+        name: fileName,
+        bytes: [fileSize, fileSize],
+        gpu: 'all',
+      },
+    ];
+  }
 
   let numberOfDownloads = 0;
   let downloadBytes = 0;
@@ -82,18 +87,16 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
     onUploadTaskEventLoader({
       status: 'download',
       sizeFile: 0,
-      currentFile: rejectCount,
-      size: 0,
-      current: rejectCount,
-      file: '',
+      currentFile: 1,
+      size: 1,
+      current: 1,
+      file: fileName,
     }),
   );
 
   for await (const cache of needDownload) {
     const { id, path: toFile, name: toName, bytes } = cache;
-    const bytesValid = bytes.length > 1 ? bytes[nodeType] : bytes[0];
-    const urlValid =
-      bytes.length > 1 && nodeType > 0 ? cdnCache + '_snow' : cdnCache;
+    const bytesValid = bytes[0] || fileSize;
 
     try {
       dispatch(
@@ -102,24 +105,25 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
             fileName: toName,
             currentBytes: 0,
             needBytes: bytesValid,
-            numberOfDownloads,
-            downloadBytes,
+            numberOfDownloads: 0,
+            downloadBytes: 0,
           },
         }),
       );
 
-      const downloadUrl = toFile ? `${urlValid}/${toFile}/${toName}` : `${urlValid}/${toName}`;
+      const downloadUrl = `${cdnBaseUrl}/${toName}`;
 
       const res = await FileDownload.download({
         fromUrl: downloadUrl,
-        toFile,
-        toName,
+        toFile: toFile || '',
+        toName: toName,
         progress: ({ bytesWritten }: DownloadProgressType) => {
           dispatch(
             setDownloadLoader({
               download: {
                 currentBytes: bytesWritten,
-                downloadBytes: downloadBytes + bytesWritten,
+                downloadBytes: bytesWritten,
+                needBytes: bytesValid,
               },
             }),
           );
@@ -133,10 +137,10 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
         dispatch(
           onUploadTaskEventLoader({
             status: 'download',
-            sizeFile: numberOfDownloads,
-            currentFile: rejectCount,
-            size: numberOfDownloads,
-            current: rejectCount,
+            sizeFile: 1,
+            currentFile: 1,
+            size: 1,
+            current: 1,
             file: toName,
           }),
         );
@@ -144,8 +148,8 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
         dispatch(
           setDownloadLoader({
             download: {
-              numberOfDownloads,
-              downloadBytes,
+              numberOfDownloads: 1,
+              downloadBytes: bytesValid,
             },
           }),
         );
@@ -153,6 +157,7 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
         dispatch(setCacheReject(id));
       }
     } catch (error) {
+      console.error('Download error:', error);
       dispatch(onUploadTaskEventLoader({ status: 'complete' }));
     }
   }
@@ -162,24 +167,7 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
 };
 
 export const nameFileRecursion = (): AppThunk => async (dispatch, state) => {
-  const cacheNode = state().distribution.cacheNode;
-  const gpuSystem = state().app.gpu;
-  const nodeType = state().settings.nodeType;
-  let needDownload = [0, 0];
-
-  for await (const cache of cacheNode) {
-    const { path, name, gpu: gpuCache } = cache;
-
-    const isValid = await FileValidate.isValidGpu({ gpuCache, gpuSystem });
-    if (isValid) {
-      try {
-        const res = await FileName.reversFiles(path, name, nodeType);
-        needDownload[nodeType] += res[nodeType];
-      } catch (e) {}
-    }
-  }
-
-  return needDownload[0] > 0;
+  return true;
 };
 
 export const fetchIsDownloadSuccess = (): AppThunk => async dispatch => {
@@ -190,3 +178,4 @@ export const fetchIsDownloadSuccess = (): AppThunk => async dispatch => {
     dispatch(setSuccessDownload({ isSuccessDownload: false }));
   }
 };
+
