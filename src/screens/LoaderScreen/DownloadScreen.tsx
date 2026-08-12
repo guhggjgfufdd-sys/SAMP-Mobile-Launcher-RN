@@ -1,20 +1,18 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchStartDownload } from '../thunks/loaderThunks';
+// 👈 تم تعديل المسار هنا للرجوع للمجلد الرئيسي الصحيح
+import { fetchStartDownload } from '../../thunks/loaderThunks';
 
 export const DownloadScreen = () => {
   const dispatch = useDispatch();
 
-  // جلب بيانات التحميل من الريدكس
   const { currentBytes, needBytes, fileName } = useSelector((state: any) => state.loader.download);
 
-  // 🚀 الربط المباشر: تشغيل التحميل فور فتح الشاشة
   useEffect(() => {
     dispatch(fetchStartDownload() as any);
   }, [dispatch]);
 
-  // حساب النسبة المئوية
   const progressPercent = needBytes > 0 
     ? Math.min(100, Math.floor((currentBytes / needBytes) * 100)) 
     : 0;
@@ -30,7 +28,6 @@ export const DownloadScreen = () => {
         {fileName} {currentMB} MB / {totalMB} MB
       </Text>
 
-      {/* شريط التقدم */}
       <View style={styles.progressBarBackground}>
         <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
       </View>
