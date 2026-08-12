@@ -14,7 +14,8 @@ import {
 } from '../selectors/loaderSelectors';
 import { styles } from '../styles/LoaderStyle';
 import { fetchInitialApp } from '../thunks/appThunks';
-import { autoUpdateLauncher } from '../thunks/launcherTunks';
+import { autoUpdateLauncher } from '../thunks/launcherThunks';
+
 const width = Dimensions.get('window').width;
 
 type InitiationScreenType = NativeStackScreenProps<any>;
@@ -36,20 +37,21 @@ export const InitiationScreen = React.memo(
           if (isSuccessDownload === false && rejectCount) {
             return navigation.replace('DownloadStartScreen');
           }
+        }
 
-          if (rejectCount) {
-            return navigation.replace('UpdateStartScreen');
-          }
+        if (rejectCount) {
+          return navigation.replace('UpdateStartScreen');
         }
 
         dispatch(autoUpdateLauncher());
       }
     }, [isInitial, isSuccessDownload, rejectCount]);
 
+    // تم تعديل التوجيه المباشر لشاشة التنزيل بدلاً من الشاشة الروسية
     useFocusEffect(
       React.useCallback(() => {
         if (isInitial) {
-          return navigation.replace('DownloadStartScreen');
+          return navigation.replace('DownloadScreen');
         }
 
         return () => {};
