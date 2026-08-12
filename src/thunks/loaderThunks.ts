@@ -1,3 +1,86 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StackActions } from '@react-navigation/native';
+import RNFS from 'react-native-fs';
+import {
+  CacheType,
+  setCacheReject,
+  setCompare,
+  setDownloadLoader,
+  setSuccessDownload,
+} from '../actions/loaderActions';
+import {
+  DownloadProgressType,
+  FileDownload,
+  FileName,
+  FileValidate,
+} from '../features/fileManager';
+import { navigationRef } from '../routers/RootNavigation';
+import { AppThunk } from '../store/store';
+import {
+  createPushNotificationLoader,
+  onUploadTaskEventLoader,
+} from './notificationThunks';
+
+export const compareFileRecursion =
+  ({ caches }: { caches: CacheType[] }): AppThunk =>
+  async (dispatch, state) => {
+    const filesContinue = state().distribution.filesContinue;
+    const gpuSystem = state().app.gpu;
+    const nodeType = state().settings.nodeType;
+    const { freeSpace } = await RNFS.getFSInfo();
+
+    let [
+      needDownload,
+      rejectCount,
+      successCount,
+      distributionCacheBytes,
+      downloadsCacheBytes,
+      needDownloadsCacheBytes,
+    ] = [[], 0, 0, 0, 0, 0];
+
+    for await (const cache of caches) {
+      const { path, bytes, name, gpu: gpuCache } = cache;
+      const bytesValid = bytes.length > 1 ? bytes[nodeType] : bytes[0];
+
+      const isValidCache = await FileValidate.isValidCache({
+        gpuCache,
+        gpuSystem,
+        path,
+        name,
+        bytes: bytesValid,
+        filesContinue,
+      });
+
+      if (isValidCache === 'success') {
+        downloadsCacheBytes += bytesValid;
+        successCount++;
+        distributionCacheBytes += bytesValid;
+      } else if (isValidCache === 'download') {
+        needDownload.push(cache);
+        needDownloadsCacheBytes += bytesValid;
+        rejectCount++;
+        distributionCacheBytes += bytesValid;
+      }
+    }
+
+    const isSuccessDownload = await AsyncStorage.getItem('isSuccessDownload');
+
+    dispatch(
+      setCompare({
+        compare: {
+          successCount,
+          rejectCount,
+          distributionCacheBytes,
+          downloadsCacheBytes,
+          needDownloadsCacheBytes,
+        },
+        needDownload,
+        freeSpace,
+        isSuccessDownload: isSuccessDownload === 'true' ? true : false,
+      }),
+    );
+  };
+
 export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
   const { cdnCache } = state().distribution;
   const { rejectCount } = state().loader.compare;
@@ -83,14 +166,41 @@ export const fetchStartDownload = (): AppThunk => async (dispatch, state) => {
       }
     } catch (error) {
       dispatch(onUploadTaskEventLoader({ status: 'complete' }));
-      // تم تعطيل الإعادة لشاشة الخطأ لمنع الخروج المفاجئ
       // return navigationRef.current?.dispatch(StackActions.replace('Error'));
     }
   }
 
   dispatch(onUploadTaskEventLoader({ status: 'complete' }));
   dispatch(fetchIsDownloadSuccess());
-  
-  // تم تعطيل الإعادة للشاشة الروسية (Main) لتثبيت شاشة التحميل
   // return navigationRef.current?.dispatch(StackActions.replace('Main'));
+};
+
+export const nameFileRecursion = (): AppThunk => async (dispatch, state) => {
+  const cacheNode = state().distribution.cacheNode;
+  const gpuSystem = state().app.gpu;
+  const nodeType = state().settings.nodeType;
+  let needDownload = [0, 0];
+
+  for await (const cache of cacheNode) {
+    const { path, name, gpu: gpuCache } = cache;
+
+    const isValid = await FileValidate.isValidGpu({ gpuCache, gpuSystem });
+    if (isValid) {
+      try {
+        const res = await FileName.reversFiles(path, name, nodeType);
+        needDownload[nodeType] += res[nodeType];
+      } catch (e) {}
+    }
+  }
+
+  return needDownload[0] > 0;
+};
+
+export const fetchIsDownloadSuccess = (): AppThunk => async dispatch => {
+  try {
+    await AsyncStorage.setItem('isSuccessDownload', 'true');
+    dispatch(setSuccessDownload({ isSuccessDownload: true }));
+  } catch (error) {
+    dispatch(setSuccessDownload({ isSuccessDownload: false }));
+  }
 };
