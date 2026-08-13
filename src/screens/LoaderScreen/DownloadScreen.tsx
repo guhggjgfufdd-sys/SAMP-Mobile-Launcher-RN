@@ -8,75 +8,78 @@ const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-R
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري بدء الاتصال...');
+  const [statusText, setStatusText] = useState('جاري فحص الذاكرة والاتصال...');
   const [errorDetails, setErrorDetails] = useState('');
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const activeJobIdRef = useRef<number | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const downloadJobId = useRef<number | null>(null);
 
-  // 1. طلب صلاحية الإشعارات بأمان تام
-  const requestNotificationPermission = async () => {
+  // 1. طلب الصلاحية بأمان
+  const requestPermissions = async () => {
     try {
       if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
         const perm = PermissionsAndroid.PERMISSIONS?.POST_NOTIFICATIONS || 'android.permission.POST_NOTIFICATIONS';
         await PermissionsAndroid.request(perm as any);
       }
     } catch (e) {
-      console.log('Permission skipped:', e);
+      console.log('Permission bypass', e);
     }
   };
 
-  // 2. فحص الملف الفعلي لمنع التحميل الوهمي
-  const verifyExistingFile = async (filePath: string): Promise<boolean> => {
+  // 2. فحص الحجم المحمّل سابقاً والاحتفاظ به
+  const checkSavedProgress = async (filePath: string) => {
     try {
-      const fileExists = await RNFS.exists(filePath);
-      if (fileExists) {
+      const exists = await RNFS.exists(filePath);
+      if (exists) {
         const stat = await RNFS.stat(filePath);
-        const actualSize = Number(stat?.size || 0);
+        const size = Number(stat?.size || 0);
 
-        if (actualSize === TOTAL_FILE_BYTES) {
+        if (size === TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
-          setStatusText('تم التحقق: اللعبة محمّلة وجاهزة! 🚀');
-          setIsCompleted(true);
+          setStatusText('الملف مكتمل وجاهز بالكامل! 🚀');
           return true;
-        } else {
-          // حذف الملف الناقص أو التالف
-          await RNFS.unlink(filePath).catch(() => {});
+        } else if (size > 0) {
+          // حفظ الجزء المحمل سابقاً
+          setCurrentBytes(size);
+          setStatusText(`توجد ملفات محملة سابقاً (${(size / (1024 * 1024)).toFixed(1)} MB)...`);
         }
       }
     } catch (e) {
-      console.log('Verify error:', e);
+      console.log('Check error:', e);
     }
     return false;
   };
 
-  // 3. بدء عملية التحميل المباشرة
-  const startDownloadDirectly = async () => {
+  // 3. بدء عملية التحميل بسلاسة بدون تجميد واجهة المستكشف
+  const startDownload = async () => {
+    if (isDownloading) return;
+
     setErrorDetails('');
-    setIsCompleted(false);
+    setIsDownloading(true);
     setStatusText('جاري الاتصال بالسيرفر...');
 
     const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
     try {
-      // طلب الصلاحية أولاً
-      await requestNotificationPermission();
+      await requestPermissions();
 
-      // التثبت من الذاكرة المحلية
-      const isAlreadyDone = await verifyExistingFile(archivePath);
-      if (isAlreadyDone) return;
+      const isComplete = await checkSavedProgress(archivePath);
+      if (isComplete) {
+        setIsDownloading(false);
+        return;
+      }
 
       await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
 
-      const downloadTask = RNFS.downloadFile({
+      const task = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: archivePath,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
           'Accept': '*/*',
         },
-        progressDivider: 0,
-        progressInterval: 200,
+        progressDivider: 1, // تحديث مستقر لكل 1% لمنع اختناق الـ JS
         connectionTimeout: 60000,
         readTimeout: 60000,
         background: true,
@@ -90,28 +93,30 @@ export const DownloadScreen = () => {
           }
         },
         progress: (res) => {
-          const bytes = Number(res.bytesWritten || 0);
-          setCurrentBytes(bytes);
-          setStatusText('جاري تحميل اللعبة...');
+          const now = Date.now();
+          // خنق التحديثات (Throttling) كل 300ms لكي لا يتجمد التطبيق
+          if (now - lastUpdateRef.current > 300) {
+            lastUpdateRef.current = now;
+            const bytes = Number(res.bytesWritten || 0);
+            setCurrentBytes(bytes);
+            setStatusText('جاري تحميل اللعبة...');
+          }
         },
       });
 
-      activeJobIdRef.current = downloadTask.jobId;
-      const result = await downloadTask.promise;
+      downloadJobId.current = task.jobId;
+      const result = await task.promise;
 
       if (result.statusCode === 200 || result.statusCode === 302) {
-        // التأكد النهائي من الحجم بعد اكتمال التحميل
-        const fileStat = await RNFS.stat(archivePath).catch(() => null);
-        const downloadedSizeBytes = Number(fileStat?.size || 0);
+        const stat = await RNFS.stat(archivePath).catch(() => null);
+        const finalSize = Number(stat?.size || 0);
 
-        if (downloadedSizeBytes === TOTAL_FILE_BYTES) {
+        if (finalSize === TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
-          setStatusText('تم التحميل والتحقق بنجاح! 🚀');
-          setIsCompleted(true);
+          setStatusText('تم التنزيل والتحقق بنجاح! 🚀');
         } else {
-          await RNFS.unlink(archivePath).catch(() => {});
-          setStatusText('فشل التحقيق: الملف غير مكتمل!');
-          setErrorDetails('الملف غير مطابق للحجم المطلوب وتم حذفه.');
+          setStatusText('توقف التحميل قبل الاكتمال');
+          setErrorDetails('التحميل غير مكتمل، يمكنك إعادة المحاولة لاستكمال التنزيل.');
         }
       } else if (!errorDetails) {
         setErrorDetails(`فشل التحميل. رمز الاستجابة: ${result.statusCode}`);
@@ -119,11 +124,13 @@ export const DownloadScreen = () => {
     } catch (err: any) {
       setStatusText('تعذر الاتصال بالسيرفر!');
       setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
   useEffect(() => {
-    startDownloadDirectly();
+    startDownload();
   }, []);
 
   const progressPercent = TOTAL_FILE_BYTES > 0 
@@ -152,8 +159,8 @@ export const DownloadScreen = () => {
       <Text style={styles.percentText}>{progressPercent}%</Text>
 
       {errorDetails ? (
-        <TouchableOpacity style={styles.retryBtn} onPress={startDownloadDirectly}>
-          <Text style={styles.retryBtnText}>إعادة المحاولة 🔄</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={startDownload}>
+          <Text style={styles.retryBtnText}>إعادة المحاولة / استكمال 🔄</Text>
         </TouchableOpacity>
       ) : null}
     </View>
