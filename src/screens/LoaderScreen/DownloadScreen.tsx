@@ -5,9 +5,10 @@ import { unzip } from 'react-native-zip-archive';
 
 const { width } = Dimensions.get('window');
 
+// الإعدادات
 const SERVER_NAME = 'Las Venturas RP';
-const PACKAGE_NAME = 'com.touch.mobile.dark';
-const SERVERS_SCREEN = 'Main'; // تم اعتماد الاسم الصحيح الذي وجدناه في الروتر
+const PACKAGE_NAME = 'com.touch.mobile.dark'; // تأكد أنه يطابق ما في ملف AndroidManifest
+const SERVERS_SCREEN = 'Main'; 
 
 const getTargetDirectory = () => {
   return Platform.OS === 'android' && RNFS.ExternalDirectoryPath 
@@ -21,20 +22,17 @@ const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-R
 
 export const DownloadScreen = ({ navigation }: any) => {
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('جاري التحقق من ملفات اللعبة...');
+  const [statusText, setStatusText] = useState('جاري فحص الملفات...');
   const [mbText, setMbText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
-  const isProcessingRef = useRef(false);
-
   useEffect(() => {
-    initApp();
+    startProcess();
   }, []);
 
-  // بدء العمليات فوراً بدون انتظار
-  const initApp = async () => {
-    isProcessingRef.current = true;
+  const startProcess = async () => {
+    setIsError(false);
     
     // 1. طلب الصلاحيات
     if (Platform.OS === 'android') {
@@ -44,20 +42,22 @@ export const DownloadScreen = ({ navigation }: any) => {
       ]);
     }
 
-    // 2. فحص وجود الكاش
+    // 2. فحص هل الملفات موجودة مسبقاً؟
     const hasFiles = await checkCacheExists();
     if (hasFiles) {
-      setStatusText('تم العثور على الملفات، جاري الدخول...');
-      navigateToServers();
-    } else {
-      // 3. إذا لم يوجد كاش، ابدأ التحميل فوراً
-      startDownload();
+      setStatusText('الملفات موجودة، جاري التوجيه...');
+      setTimeout(navigateToServers, 500);
+      return;
     }
+
+    // 3. إذا لم توجد، ابدأ التحميل
+    downloadFiles();
   };
 
   const checkCacheExists = async () => {
     try {
-      return (await RNFS.exists(`${TARGET_PATH}/texdb`)) && (await RNFS.exists(`${TARGET_PATH}/samp`));
+      const exists = await RNFS.exists(`${TARGET_PATH}/texdb`);
+      return exists;
     } catch (e) { return false; }
   };
 
@@ -65,53 +65,49 @@ export const DownloadScreen = ({ navigation }: any) => {
     navigation.reset({ index: 0, routes: [{ name: SERVERS_SCREEN }] });
   };
 
-  const startDownload = async () => {
+  const downloadFiles = async () => {
     setIsLoading(true);
-    setIsError(false);
+    setStatusText('جاري التحميل...');
 
     try {
-      // تنظيف أي ملفات سابقة
+      // تنظيف المكان
       if (await RNFS.exists(ZIP_FILE_PATH)) await RNFS.unlink(ZIP_FILE_PATH);
       if (!(await RNFS.exists(TARGET_PATH))) await RNFS.mkdir(TARGET_PATH);
-
-      setStatusText('جاري تحميل ملفات اللعبة...');
 
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: ZIP_FILE_PATH,
-        begin: (res) => { if (res.statusCode !== 200 && res.statusCode !== 302) throw new Error(); },
+        connectionTimeout: 15000, // زيادة الوقت لمنع التوقف
+        readTimeout: 30000,
+        begin: (res) => { if (res.statusCode !== 200) throw new Error(); },
         progress: (res) => {
           const p = res.bytesWritten / res.contentLength;
-          setProgress(p * 0.7); // 70% للتحميل
+          setProgress(p * 0.7); // التحميل يمثل 70% من العملية
           setMbText(`${(res.bytesWritten / 1024 / 1024).toFixed(1)} MB / ${(res.contentLength / 1024 / 1024).toFixed(1)} MB`);
         },
-        followRedirects: true,
       });
 
       const res = await downloadTask.promise;
 
-      if (res.statusCode === 200 || res.statusCode === 302) {
-        // التحقق من الحجم قبل فك الضغط
-        const stats = await RNFS.stat(ZIP_FILE_PATH);
-        if (stats.size < 5 * 1024 * 1024) throw new Error('الملف تالف');
-
-        // فك الضغط تلقائياً
-        setStatusText('جاري فك الضغط...');
+      if (res.statusCode === 200) {
+        // فك الضغط
+        setStatusText('جاري فك الضغط (لا تغلق التطبيق)...');
         setProgress(0.85);
+        
         await unzip(ZIP_FILE_PATH, TARGET_PATH);
 
-        // تنظيف
+        // حذف الملف المضغوط بعد الفك لتوفير المساحة
         await RNFS.unlink(ZIP_FILE_PATH);
         
-        setStatusText('تم التثبيت بنجاح!');
+        setStatusText('اكتمل التثبيت!');
         setProgress(1);
-        navigateToServers();
+        setTimeout(navigateToServers, 1000);
       } else {
-        throw new Error('فشل الاتصال');
+        throw new Error();
       }
     } catch (err) {
       setIsError(true);
-      setStatusText('خطأ في التحميل');
+      setStatusText('حدث خطأ في التحميل. تأكد من اتصال الإنترنت.');
       setIsLoading(false);
     }
   };
@@ -126,10 +122,10 @@ export const DownloadScreen = ({ navigation }: any) => {
       </View>
       
       <Text style={styles.percent}>{Math.round(progress * 100)}%</Text>
-      {mbText !== '' && <Text style={styles.mbText}>{mbText}</Text>}
+      <Text style={styles.mbText}>{mbText}</Text>
 
       {isError && (
-        <TouchableOpacity style={styles.btnRetry} onPress={startDownload}>
+        <TouchableOpacity style={styles.btnRetry} onPress={startProcess}>
           <Text style={styles.btnText}>إعادة المحاولة</Text>
         </TouchableOpacity>
       )}
@@ -139,12 +135,12 @@ export const DownloadScreen = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#101010', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  serverTitle: { color: '#FF9000', fontSize: 28, fontWeight: 'bold' },
-  status: { color: '#FFF', marginVertical: 10 },
-  barContainer: { width: '85%', height: 12, backgroundColor: '#222', borderRadius: 6, overflow: 'hidden' },
+  serverTitle: { color: '#FF9000', fontSize: 26, fontWeight: 'bold', marginBottom: 20 },
+  status: { color: '#DDD', marginBottom: 10 },
+  barContainer: { width: '90%', height: 10, backgroundColor: '#333', borderRadius: 5, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#FF9000' },
   percent: { color: '#FF9000', marginTop: 10, fontWeight: 'bold' },
-  mbText: { color: '#AAA', fontSize: 12 },
+  mbText: { color: '#888', fontSize: 12 },
   btnRetry: { marginTop: 20, backgroundColor: '#E53935', padding: 15, borderRadius: 8 },
   btnText: { color: '#FFF', fontWeight: 'bold' }
 });
