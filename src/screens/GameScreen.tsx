@@ -25,35 +25,44 @@ export const GameScreen = () => {
 
   const handlePlay = async () => {
     try {
-      // 1. تحديد مسار مجلد اللعبة وإعدادات السيرفر
+      // 1. تجهيز مجلد samp وملف settings.ini
       const sampPath = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE_NAME}/files/samp`;
       const settingsFilePath = `${sampPath}/settings.ini`;
 
-      // 2. إنشاء مجلد samp في حال لم يكن موجوداً
       const exists = await RNFS.exists(sampPath);
       if (!exists) {
         await RNFS.mkdir(sampPath);
       }
 
-      // 3. كتابة بيانات الاتصال بالسيرفر
       const settingsContent = `[client]\nhost=${SERVER_IP}\nport=${SERVER_PORT}\nname=Player_Guest\nfpsfix=1\nmultiprocess=0\n`;
       await RNFS.writeFile(settingsFilePath, settingsContent, 'utf8');
 
-      // 4. تشغيل اللعبة مباشرة من داخل نفس التطبيق (SAMPModule)
+      // 2. استدعاء GtaSetupModule المكتشف في سورس كود مشروعك
       if (Platform.OS === 'android') {
-        const { SAMPModule } = NativeModules;
+        const { GtaSetupModule } = NativeModules;
 
-        if (SAMPModule && typeof SAMPModule.launchGame === 'function') {
-          SAMPModule.launchGame();
+        if (GtaSetupModule) {
+          if (typeof GtaSetupModule.launchGame === 'function') {
+            GtaSetupModule.launchGame();
+          } else if (typeof GtaSetupModule.startGame === 'function') {
+            GtaSetupModule.startGame();
+          } else {
+            // في حال كانت دالة التشغيل باسم آخر داخل الملف
+            const functionsList = Object.keys(GtaSetupModule).join(', ');
+            Alert.alert(
+              'معلومات الموديل',
+              `الموديل GtaSetupModule متصل بنجاح! الدوال المتاحة داخله هي:\n${functionsList}`
+            );
+          }
         } else {
           Alert.alert(
-            'تنبيه',
-            'تعذر استدعاء محرك اللعبة الداخلي (SAMPModule). تأكد من إعطاء التطبيق صلاحية الوصول للملفات من إعدادات الجهاز.'
+            'خطأ',
+            'لم يتم التعرف على GtaSetupModule. تأكد من إعادة بناء التطبيق (Rebuild) بعد الحفظ.'
           );
         }
       }
     } catch (error) {
-      Alert.alert('خطأ', 'تعذر حفظ ملف الإعدادات. تأكد من منح التطبيق صلاحيات الوصول للتخزين.');
+      Alert.alert('خطأ', 'تعذر كتابة ملف الإعدادات في مجلد اللعبة.');
     }
   };
 
