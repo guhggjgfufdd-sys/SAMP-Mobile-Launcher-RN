@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform } from 'react-native';
 import RNFS from 'react-native-fs';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
@@ -8,15 +8,13 @@ const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-R
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري تجهيز الاتصال...');
+  const [statusText, setStatusText] = useState('جاري بدء الاتصال...');
   const [errorDetails, setErrorDetails] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // ذاكرة سريعة لمنع اختناق واجهة React
-  const bytesRef = useRef<number>(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const downloadJobId = useRef<number | null>(null);
 
-  // 1. طلب الصلاحية بمرونة
+  // 1. طلب الصلاحية
   const requestPermissions = async () => {
     try {
       if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
@@ -28,32 +26,7 @@ export const DownloadScreen = () => {
     }
   };
 
-  // 2. فحص الذاكرة المحلية
-  const checkExistingFile = async (filePath: string) => {
-    try {
-      const exists = await RNFS.exists(filePath);
-      if (exists) {
-        const stat = await RNFS.stat(filePath);
-        const size = Number(stat?.size || 0);
-
-        if (size === TOTAL_FILE_BYTES) {
-          bytesRef.current = TOTAL_FILE_BYTES;
-          setCurrentBytes(TOTAL_FILE_BYTES);
-          setStatusText('تم التحقق: اللعبة محمّلة وجاهزة! 🚀');
-          return true;
-        } else if (size > 0) {
-          bytesRef.current = size;
-          setCurrentBytes(size);
-          setStatusText(`استكمال التحميل من (${(size / (1024 * 1024)).toFixed(1)} MB)...`);
-        }
-      }
-    } catch (e) {
-      console.log('Check error:', e);
-    }
-    return false;
-  };
-
-  // 3. بدء عملية التنزيل المباشرة
+  // 2. بدء التحميل المباشر والحي
   const startDownload = async () => {
     if (isDownloading) return;
 
@@ -66,34 +39,43 @@ export const DownloadScreen = () => {
     try {
       await requestPermissions();
 
-      const isComplete = await checkExistingFile(archivePath);
-      if (isComplete) {
-        setIsDownloading(false);
-        return;
+      // فحص إذا كان الملف موجود ومكتمل أو تحسب الجزء المحمّل
+      const exists = await RNFS.exists(archivePath);
+      let existingSize = 0;
+      if (exists) {
+        const stat = await RNFS.stat(archivePath);
+        existingSize = Number(stat?.size || 0);
+
+        if (existingSize === TOTAL_FILE_BYTES) {
+          setCurrentBytes(TOTAL_FILE_BYTES);
+          setStatusText('الملف مكتمل وجاهز بالكامل! 🚀');
+          setIsDownloading(false);
+          return;
+        }
       }
 
       await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
 
-      // تشغيل المؤقت المستقل للواجهة (تحديث سلس كل 200ms)
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setCurrentBytes(bytesRef.current);
-      }, 200);
-
-      const downloadTask = RNFS.downloadFile({
+      // إلغاء background: true حتى لا يتجمد التحميل في أندرويد
+      const task = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: archivePath,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
+        headers: existingSize > 0 ? {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
+          'Accept': '*/*',
+          'Range': `bytes=${existingSize}-` // استكمال التحميل من النقطة الحالية
+        } : {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
           'Accept': '*/*',
         },
-        progressInterval: 500,
-        connectionTimeout: 60000,
-        readTimeout: 60000,
-        background: true,
+        progressInterval: 200,
+        progressDivider: 1,
+        connectionTimeout: 30000,
+        readTimeout: 30000,
+        background: false, // ⚠️ إيقاف خيار الخلفية المسبب لتجميد الواجهة
         hasProgress: true,
         begin: (res) => {
-          if (res.statusCode === 200 || res.statusCode === 302) {
+          if (res.statusCode === 200 || res.statusCode === 206 || res.statusCode === 302) {
             setStatusText('تم الاتصال! جاري تنزيل الملفات...');
           } else {
             setStatusText(`خطأ سيرفر: ${res.statusCode}`);
@@ -101,27 +83,26 @@ export const DownloadScreen = () => {
           }
         },
         progress: (res) => {
-          // حفظ القيمة بدون تحديث الشاشة لتجنب التجميد
-          bytesRef.current = Number(res.bytesWritten || 0);
+          const written = Number(res.bytesWritten || 0);
+          const totalDownloaded = existingSize + written;
+          setCurrentBytes(totalDownloaded);
+          setStatusText('جاري تحميل اللعبة...');
         },
       });
 
-      const result = await downloadTask.promise;
+      downloadJobId.current = task.jobId;
+      const result = await task.promise;
 
-      // إيقاف مؤقت التحديث عند الانتهاء
-      if (timerRef.current) clearInterval(timerRef.current);
-
-      if (result.statusCode === 200 || result.statusCode === 302) {
+      if (result.statusCode === 200 || result.statusCode === 206 || result.statusCode === 302) {
         const stat = await RNFS.stat(archivePath).catch(() => null);
         const finalSize = Number(stat?.size || 0);
 
-        if (finalSize === TOTAL_FILE_BYTES) {
-          bytesRef.current = TOTAL_FILE_BYTES;
+        if (finalSize >= TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
           setStatusText('تم التنزيل والتحقق بنجاح! 🚀');
         } else {
           setStatusText('توقف التحميل قبل الاكتمال');
-          setErrorDetails('يمكنك الضغط على استكمال لمتابعة التنزيل.');
+          setErrorDetails('التحميل غير مكتمل، اضغط إعادة المحاولة للاستكمال.');
         }
       } else if (!errorDetails) {
         setErrorDetails(`فشل التحميل. رمز الاستجابة: ${result.statusCode}`);
@@ -130,21 +111,17 @@ export const DownloadScreen = () => {
       setStatusText('تعذر الاتصال بالسيرفر!');
       setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
     } finally {
-      if (timerRef.current) clearInterval(timerRef.current);
       setIsDownloading(false);
     }
   };
 
   useEffect(() => {
-    // الانتظار حتى استقرار انتقال الشاشات لضمان عدم تجمد الأقسام
-    const task = InteractionManager.runAfterInteractions(() => {
+    // مهلة زمنية بسيطة لضمان استقرار الشاشة قبل الاتصال
+    const timer = setTimeout(() => {
       startDownload();
-    });
+    }, 300);
 
-    return () => {
-      task.cancel();
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   const progressPercent = TOTAL_FILE_BYTES > 0 
