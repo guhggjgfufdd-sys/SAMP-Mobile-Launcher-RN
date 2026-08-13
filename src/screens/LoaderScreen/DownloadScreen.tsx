@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform, InteractionManager } from 'react-native';
 import RNFS from 'react-native-fs';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
@@ -8,14 +8,15 @@ const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-R
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري فحص الذاكرة والاتصال...');
+  const [statusText, setStatusText] = useState('جاري تجهيز الاتصال...');
   const [errorDetails, setErrorDetails] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const lastUpdateRef = useRef<number>(0);
-  const downloadJobId = useRef<number | null>(null);
+  // ذاكرة سريعة لمنع اختناق واجهة React
+  const bytesRef = useRef<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. طلب الصلاحية بأمان
+  // 1. طلب الصلاحية بمرونة
   const requestPermissions = async () => {
     try {
       if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
@@ -23,12 +24,12 @@ export const DownloadScreen = () => {
         await PermissionsAndroid.request(perm as any);
       }
     } catch (e) {
-      console.log('Permission bypass', e);
+      console.log('Permission bypass:', e);
     }
   };
 
-  // 2. فحص الحجم المحمّل سابقاً والاحتفاظ به
-  const checkSavedProgress = async (filePath: string) => {
+  // 2. فحص الذاكرة المحلية
+  const checkExistingFile = async (filePath: string) => {
     try {
       const exists = await RNFS.exists(filePath);
       if (exists) {
@@ -36,13 +37,14 @@ export const DownloadScreen = () => {
         const size = Number(stat?.size || 0);
 
         if (size === TOTAL_FILE_BYTES) {
+          bytesRef.current = TOTAL_FILE_BYTES;
           setCurrentBytes(TOTAL_FILE_BYTES);
-          setStatusText('الملف مكتمل وجاهز بالكامل! 🚀');
+          setStatusText('تم التحقق: اللعبة محمّلة وجاهزة! 🚀');
           return true;
         } else if (size > 0) {
-          // حفظ الجزء المحمل سابقاً
+          bytesRef.current = size;
           setCurrentBytes(size);
-          setStatusText(`توجد ملفات محملة سابقاً (${(size / (1024 * 1024)).toFixed(1)} MB)...`);
+          setStatusText(`استكمال التحميل من (${(size / (1024 * 1024)).toFixed(1)} MB)...`);
         }
       }
     } catch (e) {
@@ -51,7 +53,7 @@ export const DownloadScreen = () => {
     return false;
   };
 
-  // 3. بدء عملية التحميل بسلاسة بدون تجميد واجهة المستكشف
+  // 3. بدء عملية التنزيل المباشرة
   const startDownload = async () => {
     if (isDownloading) return;
 
@@ -64,7 +66,7 @@ export const DownloadScreen = () => {
     try {
       await requestPermissions();
 
-      const isComplete = await checkSavedProgress(archivePath);
+      const isComplete = await checkExistingFile(archivePath);
       if (isComplete) {
         setIsDownloading(false);
         return;
@@ -72,14 +74,20 @@ export const DownloadScreen = () => {
 
       await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
 
-      const task = RNFS.downloadFile({
+      // تشغيل المؤقت المستقل للواجهة (تحديث سلس كل 200ms)
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setCurrentBytes(bytesRef.current);
+      }, 200);
+
+      const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: archivePath,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
           'Accept': '*/*',
         },
-        progressDivider: 1, // تحديث مستقر لكل 1% لمنع اختناق الـ JS
+        progressInterval: 500,
         connectionTimeout: 60000,
         readTimeout: 60000,
         background: true,
@@ -93,30 +101,27 @@ export const DownloadScreen = () => {
           }
         },
         progress: (res) => {
-          const now = Date.now();
-          // خنق التحديثات (Throttling) كل 300ms لكي لا يتجمد التطبيق
-          if (now - lastUpdateRef.current > 300) {
-            lastUpdateRef.current = now;
-            const bytes = Number(res.bytesWritten || 0);
-            setCurrentBytes(bytes);
-            setStatusText('جاري تحميل اللعبة...');
-          }
+          // حفظ القيمة بدون تحديث الشاشة لتجنب التجميد
+          bytesRef.current = Number(res.bytesWritten || 0);
         },
       });
 
-      downloadJobId.current = task.jobId;
-      const result = await task.promise;
+      const result = await downloadTask.promise;
+
+      // إيقاف مؤقت التحديث عند الانتهاء
+      if (timerRef.current) clearInterval(timerRef.current);
 
       if (result.statusCode === 200 || result.statusCode === 302) {
         const stat = await RNFS.stat(archivePath).catch(() => null);
         const finalSize = Number(stat?.size || 0);
 
         if (finalSize === TOTAL_FILE_BYTES) {
+          bytesRef.current = TOTAL_FILE_BYTES;
           setCurrentBytes(TOTAL_FILE_BYTES);
           setStatusText('تم التنزيل والتحقق بنجاح! 🚀');
         } else {
           setStatusText('توقف التحميل قبل الاكتمال');
-          setErrorDetails('التحميل غير مكتمل، يمكنك إعادة المحاولة لاستكمال التنزيل.');
+          setErrorDetails('يمكنك الضغط على استكمال لمتابعة التنزيل.');
         }
       } else if (!errorDetails) {
         setErrorDetails(`فشل التحميل. رمز الاستجابة: ${result.statusCode}`);
@@ -125,12 +130,21 @@ export const DownloadScreen = () => {
       setStatusText('تعذر الاتصال بالسيرفر!');
       setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
     } finally {
+      if (timerRef.current) clearInterval(timerRef.current);
       setIsDownloading(false);
     }
   };
 
   useEffect(() => {
-    startDownload();
+    // الانتظار حتى استقرار انتقال الشاشات لضمان عدم تجمد الأقسام
+    const task = InteractionManager.runAfterInteractions(() => {
+      startDownload();
+    });
+
+    return () => {
+      task.cancel();
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const progressPercent = TOTAL_FILE_BYTES > 0 
