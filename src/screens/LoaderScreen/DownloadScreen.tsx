@@ -21,7 +21,7 @@ const TARGET_PATH = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE
 const ZIP_FILE_PATH = `${TARGET_PATH}/2.11.gtasa.zip`;
 
 // 🔗 رابط تحميل الكاش الخاص بك (ضع رابط المباشر هنا)
-const DOWNLOAD_URL = 'https://YOUR_DIRECT_DOWNLOAD_URL_HERE/2.11.gtasa.zip';
+const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export default function DownloadScreen({ navigation }) {
   const [progress, setProgress] = useState(0);
