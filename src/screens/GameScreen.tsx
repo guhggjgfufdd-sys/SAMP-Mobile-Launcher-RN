@@ -5,56 +5,52 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ImageBackground,
   Alert,
   NativeModules,
   Platform,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 
-// بيانات السيرفر الخاص بك من الهوست (LemeHost)
+// بيانات سيرفرك (تم ضبط الحالة للوضع الحقيقي للسيرفر)
 const MY_SERVER = {
   id: '1',
-  name: 'Las Venturas RP', // اسم سيرفرك
-  ip: '142.132.203.47',     // الأيبي الخاص بك
-  port: 21299,             // البورت الخاص بك
-  online: 'متصل 🟢',
-  players: '12 / 100',      // يمكنك تعديلها أو ربطها بالاستعلام لاحقاً
+  name: 'Las Venturas RP',
+  ip: '142.132.203.47',
+  port: 21299,
+  isOnline: false, // متوقف حالياً على LemeHost
+  playersCount: 0,
+  maxPlayers: 100,
 };
 
 const PACKAGE_NAME = 'com.touch.mobile.dark';
 
 export const GameScreen = () => {
-  const [selectedServer, setSelectedServer] = useState(MY_SERVER);
+  const [selectedServer] = useState(MY_SERVER);
 
-  // دالة حفظ إعدادات السيرفر والاتصال
   const handlePlay = async () => {
     try {
-      // مسار ملف settings.ini الخاص بسامب
+      // 1. كتابة بيانات السيرفر في ملف settings.ini
       const sampPath = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE_NAME}/files/samp`;
       const settingsFilePath = `${sampPath}/settings.ini`;
 
-      // إنشاء المجلد إذا لم يكن موجوداً
       if (!(await RNFS.exists(sampPath))) {
         await RNFS.mkdir(sampPath);
       }
 
-      // كتابة بيانات الاتصال بالسيرفر
       const settingsContent = `[client]\nip=${selectedServer.ip}\nport=${selectedServer.port}\n`;
       await RNFS.writeFile(settingsFilePath, settingsContent, 'utf8');
 
-      // تشغيل اللعبة (في حال وجود الناتيف موديول الخاص بالتشغيل)
+      // 2. تشغيل اللعبة فوراً عبر Native Module
       if (Platform.OS === 'android' && NativeModules.SAMPModule) {
         NativeModules.SAMPModule.launchGame();
       } else {
         Alert.alert(
-          'تم حفظ البيانات!',
-          `تم ضبط الاتصال بالسيرفر:\n${selectedServer.ip}:${selectedServer.port}\n\nيمكنك الآن فتح اللعبة.`
+          'تم حفظ الإعدادات',
+          'تم حفظ أيبي السيرفر بنجاح في ملفات اللعبة. يمكنك الآن فتح اللعبة من اللانشر.'
         );
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert('خطأ', 'تعذر حفظ بيانات الاتصال بالسيرفر.');
+      Alert.alert('خطأ', 'حدثت مشكلة أثناء كتابة ملفات الاتصال.');
     }
   };
 
@@ -62,7 +58,6 @@ export const GameScreen = () => {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         
-        {/* قسم أخبار المشروع */}
         <Text style={styles.sectionTitle}>أخبار المشروع</Text>
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>🔥 افتتاح السيرفر الرسمي!</Text>
@@ -71,20 +66,15 @@ export const GameScreen = () => {
           </Text>
         </View>
 
-        {/* قسم اختيار السيرفر */}
         <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
         
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[
-            styles.serverCard,
-            selectedServer.id === MY_SERVER.id && styles.selectedServerCard,
-          ]}
-          onPress={() => setSelectedServer(MY_SERVER)}
-        >
+        <View style={[styles.serverCard, styles.selectedServerCard]}>
           <View style={styles.serverHeader}>
             <Text style={styles.serverName}>{MY_SERVER.name}</Text>
-            <Text style={styles.serverStatus}>{MY_SERVER.online}</Text>
+            {/* إظهار حالة السيرفر الحقيقية */}
+            <Text style={MY_SERVER.isOnline ? styles.statusOnline : styles.statusOffline}>
+              {MY_SERVER.isOnline ? 'متصل 🟢' : 'غير متصل 🔴'}
+            </Text>
           </View>
 
           <Text style={styles.serverIp}>
@@ -92,12 +82,14 @@ export const GameScreen = () => {
           </Text>
 
           <View style={styles.serverFooter}>
-            <Text style={styles.playersText}>اللاعبين: {MY_SERVER.players}</Text>
+            <Text style={styles.playersText}>
+              اللاعبين: {MY_SERVER.playersCount} / {MY_SERVER.maxPlayers}
+            </Text>
             <TouchableOpacity style={styles.btnPlay} onPress={handlePlay}>
               <Text style={styles.btnPlayText}>▶ بدء اللعب</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
 
       </ScrollView>
     </View>
@@ -148,7 +140,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1.5,
     borderColor: '#2A2D43',
-    marginTop: 5,
   },
   selectedServerCard: {
     borderColor: '#6B8AFD',
@@ -164,8 +155,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  serverStatus: {
+  statusOnline: {
     color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  statusOffline: {
+    color: '#F44336',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -174,7 +170,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
     textAlign: 'right',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   serverFooter: {
     flexDirection: 'row-reverse',
