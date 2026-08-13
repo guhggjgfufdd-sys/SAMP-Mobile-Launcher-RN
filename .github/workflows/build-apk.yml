@@ -7,8 +7,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # 🟢 إجبار نظام Java في السيرفر على استخدام 32MB للـ Stack لجميع عمليات Kotlin و Gradle
     env:
-      GRADLE_OPTS: "-Xmx4096m -Xss16m -Dorg.gradle.jvmargs='-Xmx4096m -Xss16m'"
+      _JAVA_OPTIONS: "-Xmx4096m -Xss32m"
+      GRADLE_OPTS: "-Xmx4096m -Xss32m -Dorg.gradle.jvmargs='-Xmx4096m -Xss32m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss32m'"
 
     steps:
       - name: Checkout repository
