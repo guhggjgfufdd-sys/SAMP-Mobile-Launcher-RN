@@ -25,7 +25,7 @@ import { UpdateScreen } from '../screens/LoaderScreen/UpdateScreen';
 import { UpdateStartScreen } from '../screens/LoaderScreen/UpdateStartScreen';
 import { ModeScreen } from '../screens/ModeScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import * as Icons from './../assets/svg';
+import * as Icons from '../assets/svg';
 import { navigationRef } from './RootNavigation';
 
 const Stack = createNativeStackNavigator();
@@ -106,11 +106,12 @@ export const NavigationRouter = React.memo(() => {
 });
 
 const Tabs = AnimatedTabBarNavigator();
+
 export const TabBarNavigation = React.memo(() => {
   return (
     <Tabs.Navigator
-      initialRouteName="Играть"
-      backBehavior={'initialRoute'}
+      initialRouteName="اللعب"
+      backBehavior="initialRoute"
       tabBarOptions={{
         activeTintColor: '#ffffff',
         inactiveTintColor: '#b6c4ee7f',
@@ -123,7 +124,7 @@ export const TabBarNavigation = React.memo(() => {
         tabBarBackground: '#212231',
       }}>
       <Tabs.Screen
-        name="Донат"
+        name="المتجر"
         component={DonateScreen}
         options={{
           headerShown: true,
@@ -135,7 +136,7 @@ export const TabBarNavigation = React.memo(() => {
         }}
       />
       <Tabs.Screen
-        name="Играть"
+        name="اللعب"
         component={GameScreen}
         options={{
           headerShown: true,
@@ -147,7 +148,7 @@ export const TabBarNavigation = React.memo(() => {
         }}
       />
       <Tabs.Screen
-        name="Настройки"
+        name="الإعدادات"
         component={SettingsScreen}
         options={{
           headerShown: true,
