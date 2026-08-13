@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  NativeModules,
   Platform,
   Linking,
 } from 'react-native';
@@ -17,74 +16,45 @@ const SERVER_PORT = 21299;
 const PACKAGE_NAME = 'com.touch.mobile.dark';
 
 export const GameScreen = () => {
-  const [serverStatus, setServerStatus] = useState({
-    isOnline: true, // افتراضياً متصل
+  const [serverStatus] = useState({
+    isOnline: true,
     playersCount: 0,
     maxPlayers: 100,
     serverName: 'Las Venturas RP',
   });
 
-  // فحص حالة السيرفر تلقائياً عند فتح الشاشة
-  useEffect(() => {
-    checkServerStatus();
-  }, []);
-
-  const checkServerStatus = async () => {
-    try {
-      // فحص حالة السيرفر عبر API
-      const response = await fetch(`https://api.open.mp/server/${SERVER_IP}:${SERVER_PORT}`);
-      if (response.ok) {
-        const data = await response.json();
-        setServerStatus({
-          isOnline: true,
-          playersCount: data.players || 0,
-          maxPlayers: data.maxPlayers || 100,
-          serverName: data.hostname || 'Las Venturas RP',
-        });
-      } else {
-        // في حال تعذر الوصول للـ API نعتبره متصلاً بناءً على لوحة التحكم
-        setServerStatus(prev => ({ ...prev, isOnline: true }));
-      }
-    } catch (error) {
-      // في حال وجود مشكلة شبكة بسيطة
-      setServerStatus(prev => ({ ...prev, isOnline: true }));
-    }
-  };
-
   const handlePlay = async () => {
     try {
-      // 1. كتابة بيانات السيرفر في ملف settings.ini داخل مجلد اللعبة
+      // 1. تحديد مسار مجلد اللعبة
       const sampPath = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE_NAME}/files/samp`;
       const settingsFilePath = `${sampPath}/settings.ini`;
 
+      // 2. إنشاء المجلد إذا لم يكن موجوداً
       const exists = await RNFS.exists(sampPath);
       if (!exists) {
         await RNFS.mkdir(sampPath);
       }
 
-      const settingsContent = `[client]\nip=${SERVER_IP}\nport=${SERVER_PORT}\n`;
+      // 3. كتابة ملف settings.ini بالصيغة الكاملة لتفادي الكراش
+      const settingsContent = `[client]\nhost=${SERVER_IP}\nport=${SERVER_PORT}\nname=Player_Guest\nfpsfix=1\nmultiprocess=0\n`;
       await RNFS.writeFile(settingsFilePath, settingsContent, 'utf8');
 
-      // 2. تشغيل اللعبة مباشرة
+      // 4. تشغيل حزمة اللعبة مباشرة
       if (Platform.OS === 'android') {
-        if (NativeModules.SAMPModule && NativeModules.SAMPModule.launchGame) {
-          NativeModules.SAMPModule.launchGame();
+        const appUrl = `package:${PACKAGE_NAME}`;
+        const canOpen = await Linking.canOpenURL(appUrl);
+        
+        if (canOpen) {
+          await Linking.openURL(appUrl);
         } else {
-          // محاولة فتح التطبيق عبر Intent أندرويد المباشر
-          const appUrl = `package:${PACKAGE_NAME}`;
-          const canOpen = await Linking.canOpenURL(appUrl);
-          if (canOpen) {
-            await Linking.openURL(appUrl);
-          } else {
-            Alert.alert(
-              'تم حفظ بيانات الاتصال',
-              'تم حفظ IP السيرفر بنجاح في ملفات اللعبة. افتح لعبة GTA/SA-MP الآن وستتصل بسيرفرك مباشرة!'
-            );
-          }
+          Alert.alert(
+            'تنبيه',
+            'تطبيق Touch Mobile غير مثبت على جهازك، أو لم يتم منح إذن التشغيل.'
+          );
         }
       }
     } catch (error) {
-      Alert.alert('خطأ', 'حدثت مشكلة أثناء حفظ ملفات الاتصال.');
+      Alert.alert('خطأ', 'تعذر الوصول إلى مجلد اللعبة. تأكد من منح التطبيق صلاحيات التخزين.');
     }
   };
 
@@ -96,7 +66,7 @@ export const GameScreen = () => {
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>🔥 السيرفر يعمل الآن!</Text>
           <Text style={styles.newsDescription}>
-            السيرفر متصل ويعمل بنجاح على LemeHost. اضغط على "بدء اللعب" للانضمام مباشرة!
+            تأكد من إعطاء اللعبة صلاحيات الوصول للملفات من إعدادات الهاتف لتجنب الخروج التلقائي.
           </Text>
         </View>
 
@@ -105,10 +75,7 @@ export const GameScreen = () => {
         <View style={[styles.serverCard, styles.selectedServerCard]}>
           <View style={styles.serverHeader}>
             <Text style={styles.serverName}>{serverStatus.serverName}</Text>
-            {/* إظهار حالة السيرفر */}
-            <Text style={serverStatus.isOnline ? styles.statusOnline : styles.statusOffline}>
-              {serverStatus.isOnline ? 'متصل 🟢' : 'غير متصل 🔴'}
-            </Text>
+            <Text style={styles.statusOnline}>متصل 🟢</Text>
           </View>
 
           <Text style={styles.serverIp}>
@@ -194,11 +161,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  statusOffline: {
-    color: '#F44336',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   serverIp: {
     color: '#8A8FAD',
     fontSize: 13,
@@ -228,4 +190,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Gam
+export default GameScreen;
