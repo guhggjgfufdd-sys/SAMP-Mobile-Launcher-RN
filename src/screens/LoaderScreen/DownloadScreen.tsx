@@ -1,57 +1,161 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, PermissionsAndroid, Platform } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-// تصحيح مسار الـ import المسبب لخطأ الـ Build
-import { fetchStartDownload } from '../../thunks/loaderThunks';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform } from 'react-native';
+import RNFS from 'react-native-fs';
+
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB
+const FILE_NAME = '2.11.gtasa.zip';
+const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = () => {
-  const dispatch = useDispatch();
+  const [currentBytes, setCurrentBytes] = useState(0);
+  const [statusText, setStatusText] = useState('جاري بدء الاتصال...');
+  const [errorDetails, setErrorDetails] = useState('');
+  const [isCompleted, setIsCompleted] = useState(false);
 
-  // جلب بيانات التحميل من الريدكس
-  const { currentBytes, needBytes, fileName } = useSelector((state: any) => state.loader.download);
+  const activeJobIdRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const initDownload = async () => {
-      // 1. طلب صلاحية الإشعارات للأندرويد 13+ أولاً قبل بدء التحميل
-      if (Platform.OS === 'android' && Platform.Version >= 33) {
-        try {
-          await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-          );
-        } catch (error) {
-          console.log('Permission error:', error);
+  // 1. طلب صلاحية الإشعارات بأمان تام
+  const requestNotificationPermission = async () => {
+    try {
+      if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+        const perm = PermissionsAndroid.PERMISSIONS?.POST_NOTIFICATIONS || 'android.permission.POST_NOTIFICATIONS';
+        await PermissionsAndroid.request(perm as any);
+      }
+    } catch (e) {
+      console.log('Permission skipped:', e);
+    }
+  };
+
+  // 2. فحص الملف الفعلي لمنع التحميل الوهمي
+  const verifyExistingFile = async (filePath: string): Promise<boolean> => {
+    try {
+      const fileExists = await RNFS.exists(filePath);
+      if (fileExists) {
+        const stat = await RNFS.stat(filePath);
+        const actualSize = Number(stat?.size || 0);
+
+        if (actualSize === TOTAL_FILE_BYTES) {
+          setCurrentBytes(TOTAL_FILE_BYTES);
+          setStatusText('تم التحقق: اللعبة محمّلة وجاهزة! 🚀');
+          setIsCompleted(true);
+          return true;
+        } else {
+          // حذف الملف الناقص أو التالف
+          await RNFS.unlink(filePath).catch(() => {});
         }
       }
+    } catch (e) {
+      console.log('Verify error:', e);
+    }
+    return false;
+  };
 
-      // 2. بدء التحميل بعد استقرار الشاشة والصلاحيات
-      dispatch(fetchStartDownload() as any);
-    };
+  // 3. بدء عملية التحميل المباشرة
+  const startDownloadDirectly = async () => {
+    setErrorDetails('');
+    setIsCompleted(false);
+    setStatusText('جاري الاتصال بالسيرفر...');
 
-    initDownload();
-  }, [dispatch]);
+    const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
-  // حساب النسبة المئوية
-  const progressPercent = needBytes > 0 
-    ? Math.min(100, Math.floor((currentBytes / needBytes) * 100)) 
+    try {
+      // طلب الصلاحية أولاً
+      await requestNotificationPermission();
+
+      // التثبت من الذاكرة المحلية
+      const isAlreadyDone = await verifyExistingFile(archivePath);
+      if (isAlreadyDone) return;
+
+      await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
+
+      const downloadTask = RNFS.downloadFile({
+        fromUrl: DOWNLOAD_URL,
+        toFile: archivePath,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
+          'Accept': '*/*',
+        },
+        progressDivider: 0,
+        progressInterval: 200,
+        connectionTimeout: 60000,
+        readTimeout: 60000,
+        background: true,
+        hasProgress: true,
+        begin: (res) => {
+          if (res.statusCode === 200 || res.statusCode === 302) {
+            setStatusText('تم الاتصال! جاري تنزيل الملفات...');
+          } else {
+            setStatusText(`خطأ سيرفر: ${res.statusCode}`);
+            setErrorDetails(`رمز الاستجابة: ${res.statusCode}`);
+          }
+        },
+        progress: (res) => {
+          const bytes = Number(res.bytesWritten || 0);
+          setCurrentBytes(bytes);
+          setStatusText('جاري تحميل اللعبة...');
+        },
+      });
+
+      activeJobIdRef.current = downloadTask.jobId;
+      const result = await downloadTask.promise;
+
+      if (result.statusCode === 200 || result.statusCode === 302) {
+        // التأكد النهائي من الحجم بعد اكتمال التحميل
+        const fileStat = await RNFS.stat(archivePath).catch(() => null);
+        const downloadedSizeBytes = Number(fileStat?.size || 0);
+
+        if (downloadedSizeBytes === TOTAL_FILE_BYTES) {
+          setCurrentBytes(TOTAL_FILE_BYTES);
+          setStatusText('تم التحميل والتحقق بنجاح! 🚀');
+          setIsCompleted(true);
+        } else {
+          await RNFS.unlink(archivePath).catch(() => {});
+          setStatusText('فشل التحقيق: الملف غير مكتمل!');
+          setErrorDetails('الملف غير مطابق للحجم المطلوب وتم حذفه.');
+        }
+      } else if (!errorDetails) {
+        setErrorDetails(`فشل التحميل. رمز الاستجابة: ${result.statusCode}`);
+      }
+    } catch (err: any) {
+      setStatusText('تعذر الاتصال بالسيرفر!');
+      setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
+    }
+  };
+
+  useEffect(() => {
+    startDownloadDirectly();
+  }, []);
+
+  const progressPercent = TOTAL_FILE_BYTES > 0 
+    ? Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100)) 
     : 0;
 
   const currentMB = (currentBytes / (1024 * 1024)).toFixed(2);
-  const totalMB = (needBytes / (1024 * 1024)).toFixed(2);
+  const totalMB = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(2);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>جاري التحميل...</Text>
+      <Text style={styles.title}>{statusText}</Text>
+
+      {errorDetails ? (
+        <Text style={styles.errorText}>{errorDetails}</Text>
+      ) : null}
 
       <Text style={styles.fileDetails}>
-        {fileName} ({currentMB} MB / {totalMB} MB)
+        {FILE_NAME} - {currentMB} MB / {totalMB} MB
       </Text>
 
-      {/* شريط التقدم */}
       <View style={styles.progressBarBackground}>
         <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
       </View>
 
       <Text style={styles.percentText}>{progressPercent}%</Text>
+
+      {errorDetails ? (
+        <TouchableOpacity style={styles.retryBtn} onPress={startDownloadDirectly}>
+          <Text style={styles.retryBtnText}>إعادة المحاولة 🔄</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 };
@@ -61,23 +165,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111',
+    backgroundColor: '#111111',
+    paddingHorizontal: 20,
   },
   title: {
-    color: '#fff',
-    fontSize: 20,
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: '#ff5252',
+    fontSize: 13,
+    marginBottom: 15,
+    textAlign: 'center',
   },
   fileDetails: {
-    color: '#aaa',
+    color: '#aaaaaa',
     fontSize: 14,
     marginBottom: 10,
   },
   progressBarBackground: {
-    width: '80%',
+    width: '90%',
     height: 12,
-    backgroundColor: '#333',
+    backgroundColor: '#333333',
     borderRadius: 6,
     overflow: 'hidden',
   },
@@ -90,6 +202,17 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginTop: 15,
+  },
+  retryBtn: {
+    marginTop: 25,
+    backgroundColor: '#2196F3',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 
