@@ -15,12 +15,12 @@ import { unzip } from 'react-native-zip-archive';
 
 const { width } = Dimensions.get('window');
 
-// إعدادات السيرفر
+// إعدادات السيرفر والشاشات
 const SERVER_NAME = 'Las Venturas RP';
 const PACKAGE_NAME = 'com.touch.mobile.dark';
 
-// ⚠️ تأكد أن هذا الاسم يطابق تماماً اسم الشاشة المكتوب في ملف Navigation / App.tsx لديك
-const SERVERS_SCREEN = 'NodeScreen'; 
+// تم ضبط اسم الشاشة إلى Main بناءً على ملف navigation-router.tsx
+const SERVERS_SCREEN = 'Main'; 
 
 const getTargetDirectory = () => {
   if (Platform.OS === 'android' && RNFS.ExternalDirectoryPath) {
@@ -36,7 +36,7 @@ const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-R
 export const DownloadScreen = ({ navigation }: any) => {
   const [progress, setProgress] = useState<number>(0);
   const [statusText, setStatusText] = useState<string>('جاري تحضير اللعبة...');
-  const [mbText, setMbText] = useState<string>(''); // عداد الميجابايت
+  const [mbText, setMbText] = useState<string>(''); // عداد الـ MB
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
   const [canSkip, setCanSkip] = useState<boolean>(false);
@@ -72,6 +72,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
+  // فحص وجود الكاش المنقول يدوياً أو المكتمل سابقاً
   const checkCacheExists = async (): Promise<boolean> => {
     try {
       const texdb = await RNFS.exists(`${TARGET_PATH}/texdb`);
@@ -83,7 +84,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
-  // دالة التوجيه مع معالجة حذرة للأخطاء
+  // الانتقال المباشر إلى الشاشة الرئيسية (Main)
   const navigateToServers = () => {
     if (!navigation) return;
     try {
@@ -113,6 +114,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     setStatusText('جاري فحص ملفات اللعبة...');
     const installed = await checkCacheExists();
 
+    // في حال وجود الكاش (تم نقله يدوياً أو مثبت سابقاً)
     if (installed) {
       hasCompletedRef.current = true;
       isProcessingRef.current = false;
@@ -124,7 +126,7 @@ export const DownloadScreen = ({ navigation }: any) => {
 
       setTimeout(() => {
         navigateToServers();
-      }, 600);
+      }, 500);
       return;
     }
 
@@ -143,7 +145,7 @@ export const DownloadScreen = ({ navigation }: any) => {
         await RNFS.unlink(ZIP_FILE_PATH).catch(() => {});
       }
 
-      setStatusText(`جاري الاتصال بسيرفر ${SERVER_NAME}...`);
+      setStatusText(`جاري الاتصال بالسيرفر...`);
 
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
@@ -164,11 +166,11 @@ export const DownloadScreen = ({ navigation }: any) => {
           if (res.contentLength > 0) {
             let realProgress = res.bytesWritten / res.contentLength;
             
-            // حساب الميجابايت
+            // حساب وحرض الـ MB المكتوبة من الحجم الكلي
             const writtenMB = (res.bytesWritten / (1024 * 1024)).toFixed(1);
             const totalMB = (res.contentLength / (1024 * 1024)).toFixed(1);
 
-            setProgress(realProgress * 0.75); // 75% للتحميل
+            setProgress(realProgress * 0.75); // 75% للشريط أسبوع التنزيل
             setStatusText('جاري تحميل ملفات الكاش...');
             setMbText(`${writtenMB} MB / ${totalMB} MB`);
           }
@@ -181,6 +183,7 @@ export const DownloadScreen = ({ navigation }: any) => {
       if (downloadRes.statusCode === 200 || downloadRes.statusCode === 302) {
         const fileStat = await RNFS.stat(ZIP_FILE_PATH);
 
+        // منع التحميل الوهمي
         if (!fileStat || fileStat.size < 10 * 1024 * 1024) {
           throw new Error('الملف المحمل غير مكتمل أو فارغ');
         }
@@ -200,7 +203,7 @@ export const DownloadScreen = ({ navigation }: any) => {
 
         setProgress(1);
         setStatusText('تم تثبيت اللعبة بنجاح!');
-        setMbText('جاري الدخول للسيرفرات...');
+        setMbText('جاري التوجيه القائمة...');
         hasCompletedRef.current = true;
         isProcessingRef.current = false;
         setIsLoading(false);
@@ -208,7 +211,7 @@ export const DownloadScreen = ({ navigation }: any) => {
 
         setTimeout(() => {
           navigateToServers();
-        }, 600);
+        }, 500);
 
       } else {
         throw new Error(`فشل التحميل من السيرفر (رمز: ${downloadRes.statusCode})`);
@@ -248,7 +251,7 @@ export const DownloadScreen = ({ navigation }: any) => {
       <Text style={styles.serverTitle}>{SERVER_NAME}</Text>
       <Text style={styles.subTitle}>SAMP Mobile Launcher</Text>
 
-      {/* نص الحالة الرئيسي */}
+      {/* نص الحالة */}
       <Text style={styles.status}>{statusText}</Text>
 
       {/* شريط التقدم */}
@@ -256,23 +259,23 @@ export const DownloadScreen = ({ navigation }: any) => {
         <View style={[styles.barFill, { width: `${Math.round(progress * 100)}%` }]} />
       </View>
 
-      {/* النسبة المئوية وعداد الميجابايت */}
+      {/* النسبة وعداد الـ MB */}
       <Text style={styles.percent}>{Math.round(progress * 100)}%</Text>
       {mbText !== '' && <Text style={styles.mbText}>{mbText}</Text>}
 
-      {/* مؤشر الدوران */}
+      {/* مؤشر الدوران أثناء التحميل */}
       {isLoading && progress < 1 && (
         <ActivityIndicator size="small" color="#FF9000" style={{ marginTop: 15 }} />
       )}
 
-      {/* زر الانطلاق المباشر في حال الاكتفاء أو تأخر التنقل التلقائي */}
+      {/* زر دخول القائمة في حال الاكتفاء أو الانتهاء */}
       {canSkip && (
         <TouchableOpacity style={styles.btnContinue} onPress={navigateToServers}>
           <Text style={styles.btnText}>دخول قائمة السيرفرات ➔</Text>
         </TouchableOpacity>
       )}
 
-      {/* زر إعادة المحاولة عند الخطأ */}
+      {/* زر إعادة المحاولة */}
       {isError && (
         <TouchableOpacity style={styles.btnRetry} onPress={handleRetry}>
           <Text style={styles.btnText}>إعادة المحاولة</Text>
@@ -331,7 +334,8 @@ const styles = StyleSheet.create({
   mbText: {
     color: '#AAAAAA',
     fontSize: 13,
-    marginTop: 4,
+    marginTop: 5,
+    fontWeight: '500',
   },
   btnContinue: {
     marginTop: 20,
