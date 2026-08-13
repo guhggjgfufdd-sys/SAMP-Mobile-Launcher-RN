@@ -16,13 +16,12 @@ def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
 def enableHermes = project.ext.react.get("enableHermes", false);
 
-// 🟢 حصر المعمارية على 32-bit المتوافقة مع SA-MP
+// 🟢 دعم للمعماريتين لتفادي رفض النظام والتوقف المفاجئ
 def reactNativeArchitectures() {
     def value = project.getProperties().get("reactNativeArchitectures")
-    return value ? value.split(",") : ["armeabi-v7a"]
+    return value ? value.split(",") : ["armeabi-v7a", "arm64-v8a"]
 }
 
-// 🟢 حل تعارض zip4j و fbjni وإجبار إصدارات مستقرة
 configurations.all {
     resolutionStrategy {
         force 'net.lingala.zip4j:zip4j:2.11.5'
@@ -34,7 +33,7 @@ configurations.all {
 
 android {
     ndkVersion rootProject.ext.ndkVersion
-    compileSdkVersion rootProject.ext.compileSdkVersion
+    compileSdkVersion 34
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -48,16 +47,15 @@ android {
 
     defaultConfig {
         applicationId "com.touch.mobile.dark"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion 21
+        targetSdkVersion 34  // 🟢 رفع مستهدف الأندرويد لمنع رسالة عدم التوافق
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
         
-        // 🟢 تحديد 32-bit فقط لمنع انهيار اللانشر على الهواتف الحديثة
         ndk {
-            abiFilters "armeabi-v7a"
+            abiFilters "armeabi-v7a", "arm64-v8a"
         }
     }
 
