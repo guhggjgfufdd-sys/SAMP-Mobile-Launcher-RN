@@ -6,9 +6,8 @@ import {
   TextInput,
   Switch,
   ScrollView,
-  Platform,
+  TouchableOpacity,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 
 export const SettingsScreen = () => {
   const [nickname, setNickname] = useState('');
@@ -19,12 +18,20 @@ export const SettingsScreen = () => {
   const [fpsLimit, setFpsLimit] = useState(60);
   const [chatLines, setChatLines] = useState(5);
 
+  // التحكم في الـ FPS
+  const increaseFps = () => setFpsLimit(prev => Math.min(prev + 5, 90));
+  const decreaseFps = () => setFpsLimit(prev => Math.max(prev - 5, 30));
+
+  // التحكم في أسطر الدردشة
+  const increaseLines = () => setChatLines(prev => Math.min(prev + 1, 15));
+  const decreaseLines = () => setChatLines(prev => Math.max(prev - 1, 3));
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.headerTitle}>الإعدادات</Text>
 
-        {/* أدخل الاسم */}
+        {/* إدخال اسم اللاعب */}
         <View style={styles.section}>
           <Text style={styles.label}>الاسم في اللعبة (NickName)</Text>
           <TextInput
@@ -36,7 +43,7 @@ export const SettingsScreen = () => {
           />
         </View>
 
-        {/* الخيارات والتفعيلات */}
+        {/* المفاتيح والخيارات */}
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>خريطة الشتاء</Text>
           <Switch
@@ -79,36 +86,32 @@ export const SettingsScreen = () => {
 
         <View style={styles.divider} />
 
-        {/* شريط الـ FPS */}
-        <View style={styles.sliderSection}>
-          <Text style={styles.label}>معدل الإطارات (FPS في اللعبة): {fpsLimit}</Text>
-          <Slider
-            style={{ width: '100%', height: 40 }}
-            minimumValue={30}
-            maximumValue={90}
-            step={1}
-            value={fpsLimit}
-            onValueChange={setFpsLimit}
-            minimumTrackTintColor="#6B8AFD"
-            maximumTrackTintColor="#2A2D43"
-            thumbTintColor="#6B8AFD"
-          />
+        {/* أزرار زيادة ونقصان الـ FPS */}
+        <View style={styles.controlRow}>
+          <Text style={styles.controlLabel}>معدل الإطارات (FPS): {fpsLimit}</Text>
+          <View style={styles.btnGroup}>
+            <TouchableOpacity style={styles.btnCounter} onPress={decreaseFps}>
+              <Text style={styles.btnCounterText}>-</Text>
+            </TouchableOpacity>
+            <Text style={styles.counterValue}>{fpsLimit}</Text>
+            <TouchableOpacity style={styles.btnCounter} onPress={increaseFps}>
+              <Text style={styles.btnCounterText}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* شريط عدد أسطر الشات */}
-        <View style={styles.sliderSection}>
-          <Text style={styles.label}>عدد أسطر الدردشة: {chatLines}</Text>
-          <Slider
-            style={{ width: '100%', height: 40 }}
-            minimumValue={4}
-            maximumValue={15}
-            step={1}
-            value={chatLines}
-            onValueChange={setChatLines}
-            minimumTrackTintColor="#6B8AFD"
-            maximumTrackTintColor="#2A2D43"
-            thumbTintColor="#6B8AFD"
-          />
+        {/* أزرار زيادة ونقصان أسطر الدردشة */}
+        <View style={styles.controlRow}>
+          <Text style={styles.controlLabel}>عدد أسطر الدردشة: {chatLines}</Text>
+          <View style={styles.btnGroup}>
+            <TouchableOpacity style={styles.btnCounter} onPress={decreaseLines}>
+              <Text style={styles.btnCounterText}>-</Text>
+            </TouchableOpacity>
+            <Text style={styles.counterValue}>{chatLines}</Text>
+            <TouchableOpacity style={styles.btnCounter} onPress={increaseLines}>
+              <Text style={styles.btnCounterText}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.versionText}>الإصدار 1.0.0</Text>
@@ -167,8 +170,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2D43',
     marginVertical: 15,
   },
-  sliderSection: {
-    marginVertical: 10,
+  controlRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  controlLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  btnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E202F',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2A2D43',
+  },
+  btnCounter: {
+    backgroundColor: '#6B8AFD',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  btnCounterText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  counterValue: {
+    color: '#FFFFFF',
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   versionText: {
     color: '#6C728E',
