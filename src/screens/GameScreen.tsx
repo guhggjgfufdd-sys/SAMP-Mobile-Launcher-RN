@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  NativeModules,
   Platform,
-  Linking,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 
@@ -25,36 +25,35 @@ export const GameScreen = () => {
 
   const handlePlay = async () => {
     try {
-      // 1. تحديد مسار مجلد اللعبة
+      // 1. تحديد مسار مجلد اللعبة وإعدادات السيرفر
       const sampPath = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE_NAME}/files/samp`;
       const settingsFilePath = `${sampPath}/settings.ini`;
 
-      // 2. إنشاء المجلد إذا لم يكن موجوداً
+      // 2. إنشاء مجلد samp في حال لم يكن موجوداً
       const exists = await RNFS.exists(sampPath);
       if (!exists) {
         await RNFS.mkdir(sampPath);
       }
 
-      // 3. كتابة ملف settings.ini بالصيغة الكاملة لتفادي الكراش
+      // 3. كتابة بيانات الاتصال بالسيرفر
       const settingsContent = `[client]\nhost=${SERVER_IP}\nport=${SERVER_PORT}\nname=Player_Guest\nfpsfix=1\nmultiprocess=0\n`;
       await RNFS.writeFile(settingsFilePath, settingsContent, 'utf8');
 
-      // 4. تشغيل حزمة اللعبة مباشرة
+      // 4. تشغيل اللعبة مباشرة من داخل نفس التطبيق (SAMPModule)
       if (Platform.OS === 'android') {
-        const appUrl = `package:${PACKAGE_NAME}`;
-        const canOpen = await Linking.canOpenURL(appUrl);
-        
-        if (canOpen) {
-          await Linking.openURL(appUrl);
+        const { SAMPModule } = NativeModules;
+
+        if (SAMPModule && typeof SAMPModule.launchGame === 'function') {
+          SAMPModule.launchGame();
         } else {
           Alert.alert(
             'تنبيه',
-            'تطبيق Touch Mobile غير مثبت على جهازك، أو لم يتم منح إذن التشغيل.'
+            'تعذر استدعاء محرك اللعبة الداخلي (SAMPModule). تأكد من إعطاء التطبيق صلاحية الوصول للملفات من إعدادات الجهاز.'
           );
         }
       }
     } catch (error) {
-      Alert.alert('خطأ', 'تعذر الوصول إلى مجلد اللعبة. تأكد من منح التطبيق صلاحيات التخزين.');
+      Alert.alert('خطأ', 'تعذر حفظ ملف الإعدادات. تأكد من منح التطبيق صلاحيات الوصول للتخزين.');
     }
   };
 
@@ -66,7 +65,7 @@ export const GameScreen = () => {
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>🔥 السيرفر يعمل الآن!</Text>
           <Text style={styles.newsDescription}>
-            تأكد من إعطاء اللعبة صلاحيات الوصول للملفات من إعدادات الهاتف لتجنب الخروج التلقائي.
+            اضغط على "بدء اللعب" للانضمام مباشرة إلى السيرفر الخاص بك.
           </Text>
         </View>
 
