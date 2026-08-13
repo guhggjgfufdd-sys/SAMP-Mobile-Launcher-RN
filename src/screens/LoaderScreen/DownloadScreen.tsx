@@ -18,7 +18,7 @@ export const DownloadScreen = ({ navigation }: any) => {
   const jobIdRef = useRef<number | null>(null);
   const isDownloadingRef = useRef<boolean>(false);
 
-  // 1️⃣ منع التحميل الوهمي: قراءة الحجم الحقيقي المكتوب فعلياً على ذاكرة الهاتف
+  // 1️⃣ قراءة حجم الملف الفعلي المكتوب على ذاكرة الجهاز
   const getDiskFileSize = async (filePath: string): Promise<number> => {
     try {
       const exists = await RNFS.exists(filePath);
@@ -32,7 +32,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     return 0;
   };
 
-  // 2️⃣ دالة فك الضغط والحفظ والتوجيه إلى قائمة Main
+  // 2️⃣ دالة فك الضغط والتوجيه إلى القائمة الرئيسية (Main)
   const extractAndNavigate = async (zipPath: string) => {
     try {
       setIsExtracting(true);
@@ -40,18 +40,18 @@ export const DownloadScreen = ({ navigation }: any) => {
 
       const targetPath = RNFS.DocumentDirectoryPath;
 
-      // فك ضغط ملف اللعبة
+      // فك ضغط الملف
       await unzip(zipPath, targetPath);
 
       setStatusText('تم فك الضغط وتنظيم الملفات بنجاح! 🚀');
 
-      // حذف ملف الـ ZIP لتوفير مساحة الجهاز
+      // حذف ملف الـ ZIP بعد الفك لتوفير المساحة
       await RNFS.unlink(zipPath).catch(() => {});
 
-      // حفظ حالة التثبيت كـ "مكتمل" حتى لا تظهر شاشة التحميل مرة أخرى عند فتح اللعبة
+      // حفظ حالة التثبيت كـ "مكتمل"
       await AsyncStorage.setItem('IS_GAME_INSTALLED', 'true');
 
-      // 🔄 التوجيه المباشر إلى القائمة الرئيسية (Main)
+      // 🔄 التوجيه إلى القائمة الرئيسية (Main)
       setTimeout(() => {
         if (navigation) {
           navigation.replace('Main');
@@ -65,11 +65,11 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
-  // 3️⃣ دالة التحميل الرئيسية
+  // 3️⃣ دالة بدء واستكمال التنزيل
   const startDownload = async () => {
     if (isDownloadingRef.current || isExtracting) return;
 
-    // التأكد أولاً هل اللعبة مثبتة سابقاً للذهاب مباشرة إلى Main
+    // الفحص الأول: إذا كانت اللعبة مثبتة سابقاً اذهب لـ Main مباشرة
     const isInstalled = await AsyncStorage.getItem('IS_GAME_INSTALLED');
     if (isInstalled === 'true') {
       if (navigation) navigation.replace('Main');
@@ -88,7 +88,7 @@ export const DownloadScreen = ({ navigation }: any) => {
 
       const existingDiskBytes = await getDiskFileSize(archivePath);
 
-      // 🛡️ إذا كان الملف محمّلاً بالكامل سابقاً بالذاكرة، انتقل مباشرة لفك الضغط ثم Main
+      // إذا كان الملف محملاً بالكامل اذهب فوراً لفك الضغط ثم Main
       if (existingDiskBytes >= TOTAL_FILE_BYTES) {
         setCurrentBytes(TOTAL_FILE_BYTES);
         isDownloadingRef.current = false;
@@ -99,12 +99,12 @@ export const DownloadScreen = ({ navigation }: any) => {
 
       setCurrentBytes(existingDiskBytes);
 
-      // 🔄 إرسال Range Header لتكملة التحميل من الميجابايت الأخيرة وتجنب البدء من 0
       const headers: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile)',
         'Accept': '*/*',
       };
 
+      // استخدام Range Header للتنزيل من النقطة التي توقف عندها فقط
       if (existingDiskBytes > 0) {
         headers['Range'] = `bytes=${existingDiskBytes}-`;
       }
@@ -122,7 +122,7 @@ export const DownloadScreen = ({ navigation }: any) => {
         begin: (res) => {
           jobIdRef.current = res.jobId;
 
-          // 🛡️ منع التحميل الوهمي: إلغاء العملية فوراً إذا كان الرابط معطلاً أو أرجع كود غير صالحة
+          // حماية من التحميل الوهمي عند حدوث أي خطأ بالسيرفر
           if (res.statusCode !== 200 && res.statusCode !== 206 && res.statusCode !== 302) {
             isResponseValid = false;
             setStatusText(`خطأ سيرفر: ${res.statusCode}`);
@@ -147,17 +147,15 @@ export const DownloadScreen = ({ navigation }: any) => {
 
       const result = await downloadTask.promise;
 
-      // 🛡️ فحص الحجم الفعلي النهائى المكتوب بالهاردسك
       const finalDiskSize = await getDiskFileSize(archivePath);
 
       if (result.statusCode === 200 || result.statusCode === 206) {
         if (finalDiskSize >= TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
-          // 📦 الانتهاء الحقيقي -> التوجه الفوري لفك الضغط والدخول إلى Main
           await extractAndNavigate(archivePath);
         } else {
           setCurrentBytes(finalDiskSize);
-          setStatusText('توقف التحميل مؤقتاً عند الخروج');
+          setStatusText('توقف التحميل مؤقتاً');
           setErrorDetails('اضغط استكمال لمتابعة التنزيل من حيث توقف.');
         }
       }
@@ -173,7 +171,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
-  // 🔄 استئناف التحميل تلقائياً فور العودة إلى التطبيق
+  // 🔄 متابعة حالة التطبيق لتنفيذ التنزيل تلقائياً عند الفتح
   useEffect(() => {
     startDownload();
 
