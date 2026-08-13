@@ -4,21 +4,25 @@ import RNFS from 'react-native-fs';
 import { unzip } from 'react-native-zip-archive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TOTAL_FILE_BYTES = 580869325; // 553.96 MB (الحجم الحقيقي المطلوب للملف)
+// 🎯 اسم شاشة السيرفرات في النافيجيشن (يمكنك تغيير الاسم إلى 'ServersScreen' أو 'Main' إذا كان مختلفاً لديك)
+const SERVERS_SCREEN_NAME = 'Servers';
+
+// الحجم الحقيقي المطلوب لملف اللعبة بالبايت (553.96 MB)
+const TOTAL_FILE_BYTES = 580869325; 
 const FILE_NAME = '2.11.gtasa.zip';
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = ({ navigation }: any) => {
-  const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري الفحص واستئناف التحميل...');
-  const [errorDetails, setErrorDetails] = useState('');
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
+  const [currentBytes, setCurrentBytes] = useState<number>(0);
+  const [statusText, setStatusText] = useState<string>('جاري الفحص واستئناف التحميل...');
+  const [errorDetails, setErrorDetails] = useState<string>('');
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
 
   const jobIdRef = useRef<number | null>(null);
   const isDownloadingRef = useRef<boolean>(false);
 
-  // 1️⃣ قراءة حجم الملف الفعلي المكتوب على ذاكرة الجهاز
+  // 1️⃣ قراءة حجم الملف الفعلي الموجود على ذاكرة الهاتف
   const getDiskFileSize = async (filePath: string): Promise<number> => {
     try {
       const exists = await RNFS.exists(filePath);
@@ -32,11 +36,11 @@ export const DownloadScreen = ({ navigation }: any) => {
     return 0;
   };
 
-  // 2️⃣ دالة فك الضغط والتوجيه إلى القائمة الرئيسية (Main)
+  // 2️⃣ دالة فك الضغط والتوجيه إلى شاشة السيرفرات
   const extractAndNavigate = async (zipPath: string) => {
     try {
       setIsExtracting(true);
-      setStatusText('جاري فك الضغط ونقل الملفات لأماكنها... 📦');
+      setStatusText('جاري فك الضغط ونقل الملفات... 📦');
 
       const targetPath = RNFS.DocumentDirectoryPath;
 
@@ -48,13 +52,13 @@ export const DownloadScreen = ({ navigation }: any) => {
       // حذف ملف الـ ZIP بعد الفك لتوفير المساحة
       await RNFS.unlink(zipPath).catch(() => {});
 
-      // حفظ حالة التثبيت كـ "مكتمل"
+      // حفظ حالة التثبيت في الذاكرة الدائمة
       await AsyncStorage.setItem('IS_GAME_INSTALLED', 'true');
 
-      // 🔄 التوجيه إلى القائمة الرئيسية (Main)
+      // 🔄 التوجيه المباشر إلى شاشة السيرفرات
       setTimeout(() => {
         if (navigation) {
-          navigation.replace('Main');
+          navigation.replace(SERVERS_SCREEN_NAME);
         }
       }, 1000);
 
@@ -69,17 +73,21 @@ export const DownloadScreen = ({ navigation }: any) => {
   const startDownload = async () => {
     if (isDownloadingRef.current || isExtracting) return;
 
-    // الفحص الأول: إذا كانت اللعبة مثبتة سابقاً اذهب لـ Main مباشرة
-    const isInstalled = await AsyncStorage.getItem('IS_GAME_INSTALLED');
-    if (isInstalled === 'true') {
-      if (navigation) navigation.replace('Main');
-      return;
-    }
+    // الفحص الأول: إذا كانت اللعبة مثبتة سابقاً يتم الانتقال المباشر لشاشة السيرفرات
+    try {
+      const isInstalled = await AsyncStorage.getItem('IS_GAME_INSTALLED');
+      if (isInstalled === 'true') {
+        if (navigation) {
+          navigation.replace(SERVERS_SCREEN_NAME);
+          return;
+        }
+      }
+    } catch (e) {}
 
     setErrorDetails('');
     isDownloadingRef.current = true;
     setIsDownloading(true);
-    setStatusText('جاري فحص حالة الملف والاتصال...');
+    setStatusText('جاري الاتصال بالسيرفر وفحص الذاكرة...');
 
     const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
@@ -88,7 +96,7 @@ export const DownloadScreen = ({ navigation }: any) => {
 
       const existingDiskBytes = await getDiskFileSize(archivePath);
 
-      // إذا كان الملف محملاً بالكامل اذهب فوراً لفك الضغط ثم Main
+      // إذا كان الملف محملاً بالكامل سابقاً اذهب فوراً لفك الضغط ثم شاشة السيرفرات
       if (existingDiskBytes >= TOTAL_FILE_BYTES) {
         setCurrentBytes(TOTAL_FILE_BYTES);
         isDownloadingRef.current = false;
@@ -104,7 +112,7 @@ export const DownloadScreen = ({ navigation }: any) => {
         'Accept': '*/*',
       };
 
-      // استخدام Range Header للتنزيل من النقطة التي توقف عندها فقط
+      // استخدام Range Header لاستكمال التحميل من النقطة المتوقفة
       if (existingDiskBytes > 0) {
         headers['Range'] = `bytes=${existingDiskBytes}-`;
       }
@@ -122,7 +130,7 @@ export const DownloadScreen = ({ navigation }: any) => {
         begin: (res) => {
           jobIdRef.current = res.jobId;
 
-          // حماية من التحميل الوهمي عند حدوث أي خطأ بالسيرفر
+          // حماية من التنزيل الوهمي
           if (res.statusCode !== 200 && res.statusCode !== 206 && res.statusCode !== 302) {
             isResponseValid = false;
             setStatusText(`خطأ سيرفر: ${res.statusCode}`);
@@ -146,7 +154,6 @@ export const DownloadScreen = ({ navigation }: any) => {
       });
 
       const result = await downloadTask.promise;
-
       const finalDiskSize = await getDiskFileSize(archivePath);
 
       if (result.statusCode === 200 || result.statusCode === 206) {
@@ -171,7 +178,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
-  // 🔄 متابعة حالة التطبيق لتنفيذ التنزيل تلقائياً عند الفتح
+  // 4️⃣ استئناف التحميل تلقائياً عند الدخول أو العودة للـ App
   useEffect(() => {
     startDownload();
 
