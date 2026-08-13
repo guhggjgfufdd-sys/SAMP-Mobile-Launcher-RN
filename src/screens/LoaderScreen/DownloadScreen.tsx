@@ -15,14 +15,12 @@ import { unzip } from 'react-native-zip-archive';
 
 const { width } = Dimensions.get('window');
 
-// 👑 اسم السيرفر الخاص بكم
+// إعدادات السيرفر والتطبيق
 const SERVER_NAME = 'Las Venturas RP';
 const PACKAGE_NAME = 'com.touch.mobile.dark';
+const SERVERS_SCREEN = 'NodeScreen'; // شاشة السيرفرات (الشاشة الروسية)
 
-// 📱 اسم شاشة السيرفرات التالية المباشرة
-const SERVERS_SCREEN = 'ModeScreen';
-
-// 📂 تحديد مسار التخزين المتوافق مع Android 11+ لتفادي حظر النظام وخطأ 0%
+// تحديد مسار التخزين المقترن بالنظام
 const getTargetDirectory = () => {
   if (Platform.OS === 'android' && RNFS.ExternalDirectoryPath) {
     return RNFS.ExternalDirectoryPath;
@@ -32,7 +30,7 @@ const getTargetDirectory = () => {
 
 const TARGET_PATH = getTargetDirectory();
 const ZIP_FILE_PATH = `${TARGET_PATH}/gtasa_cache.zip`;
-const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.6/2.11.gtasa.zip';
+const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = ({ navigation }: any) => {
   const [progress, setProgress] = useState<number>(0);
@@ -40,13 +38,12 @@ export const DownloadScreen = ({ navigation }: any) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
 
-  // 🛡️ متغيرات حماية لمنع التكرار والتأكد من عدم إعادة التحميل بعد الانتهاء
+  // متغيرات حماية لمنع التكرار والتحميل الوهمي
   const isProcessingRef = useRef<boolean>(false);
   const hasCompletedRef = useRef<boolean>(false);
   const downloadJobIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // 🖤 تأخير بسيط (400ms) لمنع ظهور الشاشة السوداء عند فتح الواجهة
     const timer = setTimeout(() => {
       initProcess();
     }, 400);
@@ -59,7 +56,7 @@ export const DownloadScreen = ({ navigation }: any) => {
     };
   }, []);
 
-  // 1️⃣ طلب صلاحيات الذاكرة للأندرويد
+  // طلب صلاحيات الذاكرة للأندرويد
   const requestPermissions = async () => {
     if (Platform.OS === 'android') {
       try {
@@ -74,52 +71,19 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
-  // 2️⃣ فحص الكاش الذكي (تجاوز التنزيل إذا كانت الملفات موجودة مسبقاً)
+  // فحص وجود الكاش (في حال تم نقله يدويًا أو مثبت مسبقًا)
   const checkCacheExists = async (): Promise<boolean> => {
     try {
       const texdb = await RNFS.exists(`${TARGET_PATH}/texdb`);
-      const samp = await RNFS.exists(`${TARGET_PATH}/SAMP`);
+      const samp = await RNFS.exists(`${TARGET_PATH}/samp`);
       const data = await RNFS.exists(`${TARGET_PATH}/data`);
-      return texdb && samp && data;
+      return (texdb && samp) || (texdb && data);
     } catch (e) {
       return false;
     }
   };
 
-  // 3️⃣ التهيئة وتحديد حالة الملفات
-  const initProcess = async () => {
-    // إيقاف العملية فوراً إذا كان التحميل مكتمل أو جاري التنفيذ لمنع التكرار
-    if (hasCompletedRef.current || isProcessingRef.current) return;
-
-    isProcessingRef.current = true;
-    setIsError(false);
-    setIsLoading(true);
-
-    setStatusText('جاري التأكد من الصلاحيات...');
-    await requestPermissions();
-
-    setStatusText('جاري فحص ملفات اللعبة...');
-    const installed = await checkCacheExists();
-
-    // إذا وُجد الكاش (منقول يدوياً أو محمل سابقاً)
-    if (installed) {
-      hasCompletedRef.current = true;
-      setStatusText('تم العثور على ملفات اللعبة!');
-      setProgress(1); // 100%
-      setIsLoading(false);
-      
-      // التوجيه المباشر لشاشة السيرفرات
-      setTimeout(() => {
-        navigateToServers();
-      }, 500);
-      return;
-    }
-
-    // إذا لم تكن الملفات موجودة، نبدأ التحميل الحقيقي
-    await startRealDownload();
-  };
-
-  // 4️⃣ الانتقال النهائي لشاشة السيرفرات بكسر جميع السجلات
+  // التوجيه المباشر لشاشة السيرفرات (NodeScreen)
   const navigateToServers = () => {
     try {
       if (navigation) {
@@ -133,7 +97,39 @@ export const DownloadScreen = ({ navigation }: any) => {
     }
   };
 
-  // 5️⃣ التحميل الحقيقي وتثبيت الكاش
+  // تهيئة عملية التنزيل/الفحص
+  const initProcess = async () => {
+    if (hasCompletedRef.current || isProcessingRef.current) return;
+
+    isProcessingRef.current = true;
+    setIsError(false);
+    setIsLoading(true);
+
+    setStatusText('جاري التأكد من الصلاحيات...');
+    await requestPermissions();
+
+    setStatusText('جاري فحص ملفات اللعبة...');
+    const installed = await checkCacheExists();
+
+    // إذا وجد الكاش يدويًا أو مثبتاً
+    if (installed) {
+      hasCompletedRef.current = true;
+      isProcessingRef.current = false;
+      setStatusText('تم العثور على ملفات اللعبة!');
+      setProgress(1);
+      setIsLoading(false);
+
+      setTimeout(() => {
+        navigateToServers();
+      }, 500);
+      return;
+    }
+
+    // إذا لم توجد الملفات، ابدأ التنزيل الحقيقي
+    await startRealDownload();
+  };
+
+  // عملية التنزيل الحقيقية والتثبيت
   const startRealDownload = async () => {
     try {
       setStatusText('جاري إنشاء مجلدات اللعبة...');
@@ -147,61 +143,67 @@ export const DownloadScreen = ({ navigation }: any) => {
         await RNFS.unlink(ZIP_FILE_PATH).catch(() => {});
       }
 
-      setStatusText(`جاري الاتصال بسيرفر تحميل ${SERVER_NAME}...`);
+      setStatusText(`جاري الاتصال بسيرفر ${SERVER_NAME}...`);
 
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: ZIP_FILE_PATH,
+        connectionTimeout: 15000,
+        readTimeout: 40000,
+        background: true,
+        discretionary: true,
+        progressDivider: 1,
+        // @ts-ignore - تتبع الروابط المعاد توجيهها من جيت هاب
+        followRedirects: true,
         begin: (res) => {
-          // منع التحميل الوهمي بالتأكد من استجابة السيرفر
+          // حماية من التحميل الوهمي عند حدوث خطأ بالسيرفر
           if (res.statusCode !== 200 && res.statusCode !== 302) {
-            throw new Error(`استجابة الخادم غير صحيحة: ${res.statusCode}`);
+            throw new Error(`استجابة الخادم غير صالحة: ${res.statusCode}`);
           }
         },
         progress: (res) => {
-          // حساب نسبة التحميل الحقيقية بالبايت
           if (res.contentLength > 0) {
             let realProgress = res.bytesWritten / res.contentLength;
-            // التنزيل يأخذ أول 75% من الشريط
+            // تخصيص 75% للتحميل و 25% لفك الضغط
             setProgress(realProgress * 0.75);
-            setStatusText(`جاري تحميل الملفات: ${Math.round(realProgress * 100)}%`);
+            setStatusText(`جاري تحميل الملفات (${Math.round(realProgress * 100)}%)`);
           }
         },
-        progressDivider: 1,
       });
 
       downloadJobIdRef.current = downloadTask.jobId;
       const downloadRes = await downloadTask.promise;
 
-      // التأكد من استلام الملف كاملاً وغير فارغ
+      // التأكد من نجاح التنزيل
       if (downloadRes.statusCode === 200 || downloadRes.statusCode === 302) {
         const fileStat = await RNFS.stat(ZIP_FILE_PATH);
-        if (!fileStat || fileStat.size === 0) {
-          throw new Error('الملف المحمل تالف أو فارغ!');
+
+        // حماية من التنزيل الوهمي: التأكد من أن حجم الملف أكبر من 10 ميجابايت على الأقل
+        if (!fileStat || fileStat.size < 10 * 1024 * 1024) {
+          throw new Error('الملف المحمل غير مكتمل أو فارغ');
         }
 
         setStatusText('جاري فك الضغط وتثبيت الملفات...');
         setProgress(0.85);
 
-        // عملية فك الضغط الحقيقية
+        // فك الضغط
         await unzip(ZIP_FILE_PATH, TARGET_PATH);
 
         setProgress(0.95);
-        setStatusText('جاري التنظيف وإنهاء التثبيت...');
+        setStatusText('جاري التنظيف وإعادة التهيئة...');
 
-        // 🗑️ تنظيف الملف المضغوط فوراً لتفريغ الذاكرة ومنع التكرار أو التعليق عند 99%
+        // حذف الملف المضغوط بعد الانتهاء لتوفير المساحة
         if (await RNFS.exists(ZIP_FILE_PATH)) {
           await RNFS.unlink(ZIP_FILE_PATH).catch(() => {});
         }
 
-        // 🎉 الاكتشمال المباشر 100%
+        // إتمام العملية بنجاح
         setProgress(1);
         setStatusText('تم تثبيت اللعبة بنجاح!');
         hasCompletedRef.current = true;
         isProcessingRef.current = false;
         setIsLoading(false);
 
-        // 🚀 التوجيه المباشر والنهائي لشاشة السيرفرات
         setTimeout(() => {
           navigateToServers();
         }, 600);
@@ -217,19 +219,20 @@ export const DownloadScreen = ({ navigation }: any) => {
       setIsError(true);
       setStatusText('حدث خطأ أثناء التثبيت');
 
+      // تنظيف الملف التالف عند الفشل
       if (await RNFS.exists(ZIP_FILE_PATH)) {
         await RNFS.unlink(ZIP_FILE_PATH).catch(() => {});
       }
 
       Alert.alert(
         'خطأ في التحميل',
-        'تعذر التنزيل التلقائي. تأكد من توفر المساحة والإنترنت، أو يمكنك نقل الملفات يدوياً.',
+        'تعذر التنزيل التلقائي. تأكد من توفر المساحة والإنترنت، أو يمكنك نقل الملفات يدويًا.',
         [{ text: 'موافق' }]
       );
     }
   };
 
-  // دالة زر إعادة المحاولة
+  // إعادة المحاولة عند حدوث خطأ
   const handleRetry = () => {
     isProcessingRef.current = false;
     hasCompletedRef.current = false;
@@ -239,14 +242,14 @@ export const DownloadScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      {/* اسم سيرفركم */}
+      {/* اسم السيرفر */}
       <Text style={styles.serverTitle}>{SERVER_NAME}</Text>
       <Text style={styles.subTitle}>SAMP Mobile Launcher</Text>
 
       {/* نص حالة التحميل */}
       <Text style={styles.status}>{statusText}</Text>
 
-      {/* شريط التقدم الحقيقي */}
+      {/* شريط التقدم */}
       <View style={styles.barContainer}>
         <View style={[styles.barFill, { width: `${Math.round(progress * 100)}%` }]} />
       </View>
@@ -254,12 +257,12 @@ export const DownloadScreen = ({ navigation }: any) => {
       {/* النسبة المئوية */}
       <Text style={styles.percent}>{Math.round(progress * 100)}%</Text>
 
-      {/* مؤشر الدوران أثناء التحميل */}
+      {/* مؤشر الدوران */}
       {isLoading && progress < 1 && (
-        <ActivityIndicator size="small" color="#FF9800" style={{ marginTop: 15 }} />
+        <ActivityIndicator size="small" color="#FF9000" style={{ marginTop: 15 }} />
       )}
 
-      {/* زر إعادة المحاولة عند حدوث خطأ */}
+      {/* زر إعادة المحاولة */}
       {isError && (
         <TouchableOpacity style={styles.btnRetry} onPress={handleRetry}>
           <Text style={styles.btnText}>إعادة المحاولة</Text>
@@ -272,19 +275,19 @@ export const DownloadScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#101018',
+    backgroundColor: '#101010',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   serverTitle: {
-    color: '#FF9800',
+    color: '#FF9000',
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   subTitle: {
-    color: '#8888AA',
+    color: '#888888',
     fontSize: 14,
     marginBottom: 35,
     marginTop: 5,
@@ -292,7 +295,7 @@ const styles = StyleSheet.create({
   status: {
     color: '#E0E0E0',
     fontSize: 14,
-    marginBottom: 18,
+    marginBottom: 10,
     textAlign: 'center',
   },
   barContainer: {
@@ -306,11 +309,11 @@ const styles = StyleSheet.create({
   },
   barFill: {
     height: '100%',
-    backgroundColor: '#FF9800',
+    backgroundColor: '#FF9000',
     borderRadius: 6,
   },
   percent: {
-    color: '#FF9800',
+    color: '#FF9000',
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 10,
