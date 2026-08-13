@@ -1,300 +1,222 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, AppState, AppStateStatus } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
 import RNFS from 'react-native-fs';
 import { unzip } from 'react-native-zip-archive';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 🎯 اسم شاشة السيرفرات في النافيجيشن (يمكنك تغيير الاسم إلى 'ServersScreen' أو 'Main' إذا كان مختلفاً لديك)
-const SERVERS_SCREEN_NAME = 'Servers';
+const { width } = Dimensions.get('window');
 
-// الحجم الحقيقي المطلوب لملف اللعبة بالبايت (553.96 MB)
-const TOTAL_FILE_BYTES = 580869325; 
-const FILE_NAME = '2.11.gtasa.zip';
-const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+// ⚠️ اسـم الحـزمـة الخـاص بـمشـروعـك
+const PACKAGE_NAME = 'com.touch.mobile.dark';
 
-export const DownloadScreen = ({ navigation }: any) => {
-  const [currentBytes, setCurrentBytes] = useState<number>(0);
-  const [statusText, setStatusText] = useState<string>('جاري الفحص واستئناف التحميل...');
-  const [errorDetails, setErrorDetails] = useState<string>('');
-  const [isDownloading, setIsDownloading] = useState<boolean>(false);
-  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+// المسارات الأساسية في الجهاز
+const TARGET_PATH = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE_NAME}/files`;
+const ZIP_FILE_PATH = `${TARGET_PATH}/2.11.gtasa.zip`;
 
-  const jobIdRef = useRef<number | null>(null);
-  const isDownloadingRef = useRef<boolean>(false);
+// 🔗 رابط تحميل الكاش الخاص بك (ضع رابط المباشر هنا)
+const DOWNLOAD_URL = 'https://YOUR_DIRECT_DOWNLOAD_URL_HERE/2.11.gtasa.zip';
 
-  // 1️⃣ قراءة حجم الملف الفعلي الموجود على ذاكرة الهاتف
-  const getDiskFileSize = async (filePath: string): Promise<number> => {
-    try {
-      const exists = await RNFS.exists(filePath);
-      if (exists) {
-        const stat = await RNFS.stat(filePath);
-        return Number(stat?.size || 0);
-      }
-    } catch (err) {
-      console.log('خطأ في قراءة الذاكرة:', err);
-    }
-    return 0;
-  };
+export default function DownloadScreen({ navigation }) {
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('جاري التحقق من ملفات اللعبة...');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  // 2️⃣ دالة فك الضغط والتوجيه إلى شاشة السيرفرات
-  const extractAndNavigate = async (zipPath: string) => {
-    try {
-      setIsExtracting(true);
-      setStatusText('جاري فك الضغط ونقل الملفات... 📦');
-
-      const targetPath = RNFS.DocumentDirectoryPath;
-
-      // فك ضغط الملف
-      await unzip(zipPath, targetPath);
-
-      setStatusText('تم فك الضغط وتنظيم الملفات بنجاح! 🚀');
-
-      // حذف ملف الـ ZIP بعد الفك لتوفير المساحة
-      await RNFS.unlink(zipPath).catch(() => {});
-
-      // حفظ حالة التثبيت في الذاكرة الدائمة
-      await AsyncStorage.setItem('IS_GAME_INSTALLED', 'true');
-
-      // 🔄 التوجيه المباشر إلى شاشة السيرفرات
-      setTimeout(() => {
-        if (navigation) {
-          navigation.replace(SERVERS_SCREEN_NAME);
-        }
-      }, 1000);
-
-    } catch (err: any) {
-      setIsExtracting(false);
-      setStatusText('حدث خطأ أثناء فك الضغط!');
-      setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
-    }
-  };
-
-  // 3️⃣ دالة بدء واستكمال التنزيل
-  const startDownload = async () => {
-    if (isDownloadingRef.current || isExtracting) return;
-
-    // الفحص الأول: إذا كانت اللعبة مثبتة سابقاً يتم الانتقال المباشر لشاشة السيرفرات
-    try {
-      const isInstalled = await AsyncStorage.getItem('IS_GAME_INSTALLED');
-      if (isInstalled === 'true') {
-        if (navigation) {
-          navigation.replace(SERVERS_SCREEN_NAME);
-          return;
-        }
-      }
-    } catch (e) {}
-
-    setErrorDetails('');
-    isDownloadingRef.current = true;
-    setIsDownloading(true);
-    setStatusText('جاري الاتصال بالسيرفر وفحص الذاكرة...');
-
-    const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
-
-    try {
-      await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
-
-      const existingDiskBytes = await getDiskFileSize(archivePath);
-
-      // إذا كان الملف محملاً بالكامل سابقاً اذهب فوراً لفك الضغط ثم شاشة السيرفرات
-      if (existingDiskBytes >= TOTAL_FILE_BYTES) {
-        setCurrentBytes(TOTAL_FILE_BYTES);
-        isDownloadingRef.current = false;
-        setIsDownloading(false);
-        await extractAndNavigate(archivePath);
-        return;
-      }
-
-      setCurrentBytes(existingDiskBytes);
-
-      const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile)',
-        'Accept': '*/*',
-      };
-
-      // استخدام Range Header لاستكمال التحميل من النقطة المتوقفة
-      if (existingDiskBytes > 0) {
-        headers['Range'] = `bytes=${existingDiskBytes}-`;
-      }
-
-      let isResponseValid = true;
-
-      const downloadTask = RNFS.downloadFile({
-        fromUrl: DOWNLOAD_URL,
-        toFile: archivePath,
-        headers,
-        background: true,
-        progressInterval: 400,
-        connectionTimeout: 45000,
-        readTimeout: 45000,
-        begin: (res) => {
-          jobIdRef.current = res.jobId;
-
-          // حماية من التنزيل الوهمي
-          if (res.statusCode !== 200 && res.statusCode !== 206 && res.statusCode !== 302) {
-            isResponseValid = false;
-            setStatusText(`خطأ سيرفر: ${res.statusCode}`);
-            setErrorDetails('السيرفر أرجع استجابة غير صالحة. تم إيقاف التحميل لمنع التنزيل الوهمي.');
-            if (jobIdRef.current) {
-              RNFS.stopDownload(jobIdRef.current);
-            }
-          } else {
-            setStatusText('جاري تحميل ملفات اللعبة...');
-          }
-        },
-        progress: (res) => {
-          if (!isResponseValid) return;
-          const written = Number(res.bytesWritten || 0);
-          const totalProgress = existingDiskBytes + written;
-
-          if (totalProgress <= TOTAL_FILE_BYTES) {
-            setCurrentBytes(totalProgress);
-          }
-        },
-      });
-
-      const result = await downloadTask.promise;
-      const finalDiskSize = await getDiskFileSize(archivePath);
-
-      if (result.statusCode === 200 || result.statusCode === 206) {
-        if (finalDiskSize >= TOTAL_FILE_BYTES) {
-          setCurrentBytes(TOTAL_FILE_BYTES);
-          await extractAndNavigate(archivePath);
-        } else {
-          setCurrentBytes(finalDiskSize);
-          setStatusText('توقف التحميل مؤقتاً');
-          setErrorDetails('اضغط استكمال لمتابعة التنزيل من حيث توقف.');
-        }
-      }
-    } catch (err: any) {
-      const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
-      const savedBytes = await getDiskFileSize(archivePath);
-      setCurrentBytes(savedBytes);
-      setStatusText('توقف الاتصال');
-      setErrorDetails(`يمكنك الاستكمال من النقطة الحالية (${(savedBytes / (1024 * 1024)).toFixed(2)} MB).`);
-    } finally {
-      isDownloadingRef.current = false;
-      setIsDownloading(false);
-    }
-  };
-
-  // 4️⃣ استئناف التحميل تلقائياً عند الدخول أو العودة للـ App
   useEffect(() => {
-    startDownload();
-
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active' && !isDownloadingRef.current && !isExtracting) {
-        startDownload();
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription.remove();
-    };
+    checkAndProcess();
   }, []);
 
-  const progressPercent = TOTAL_FILE_BYTES > 0 
-    ? Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100)) 
-    : 0;
+  // 1️⃣ دالة التحقق من وجود الكاش (لمنع إعادة التحميل)
+  const isCacheInstalled = async () => {
+    try {
+      const texdbExists = await RNFS.exists(`${TARGET_PATH}/texdb`);
+      const sampExists = await RNFS.exists(`${TARGET_PATH}/SAMP`);
+      const dataExists = await RNFS.exists(`${TARGET_PATH}/data`);
 
-  const currentMB = (currentBytes / (1024 * 1024)).toFixed(2);
-  const totalMB = (TOTAL_FILE_BYTES / (1024 * 1024)).toFixed(2);
+      // إذا كانت مجلدات اللعبة الأساسية موجودة فالمفروض لا يعيد التحميل
+      return texdbExists && sampExists && dataExists;
+    } catch (err) {
+      console.log('Error checking cache files:', err);
+      return false;
+    }
+  };
+
+  // 2️⃣ التحقق والتوجيه للشاشة التالية
+  const checkAndProcess = async () => {
+    setHasError(false);
+    const installed = await isCacheInstalled();
+
+    if (installed) {
+      setStatusText('تم العثور على الملفات، جاري الدخول...');
+      setProgress(1);
+      
+      // ✅ الانتقال التلقائي المباشر لشاشة السيرفرات
+      setTimeout(() => {
+        navigation.replace('Servers'); // تأكد من اسم شاشة السيرفرات في Navigation
+      }, 800);
+      return;
+    }
+
+    // إذا لم تكن الملفات موجودة يبدأ التنزيل
+    startDownloadProcess();
+  };
+
+  // 3️⃣ عملية التنزيل وفك الضغط
+  const startDownloadProcess = async () => {
+    try {
+      setIsDownloading(true);
+      setHasError(false);
+      
+      // التأكد من وجود المجلد الرئيسي
+      const exists = await RNFS.exists(TARGET_PATH);
+      if (!exists) {
+        await RNFS.mkdir(TARGET_PATH);
+      }
+
+      setStatusText('جاري تحميل ملفات اللعبة...');
+
+      // خيارات التنزيل
+      const downloadOptions = {
+        fromUrl: DOWNLOAD_URL,
+        toFile: ZIP_FILE_PATH,
+        progress: (res) => {
+          if (res.contentLength > 0) {
+            let p = res.bytesWritten / res.contentLength;
+            // التحميل يأخذ من 0% إلى 80% من الشريط
+            setProgress(p * 0.8);
+          }
+        },
+        progressDivider: 1,
+      };
+
+      const downloadRes = await RNFS.downloadFile(downloadOptions).promise;
+
+      if (downloadRes.statusCode === 200) {
+        setStatusText('جاري فك الضغط والتثبيت... (يرجى الانتظار)');
+        setProgress(0.85);
+
+        // فك الضغط
+        await unzip(ZIP_FILE_PATH, TARGET_PATH);
+
+        // مسح ملف الـ ZIP التالف/المؤقت بعد الفك لتوفير الذاكرة
+        if (await RNFS.exists(ZIP_FILE_PATH)) {
+          await RNFS.unlink(ZIP_FILE_PATH);
+        }
+
+        setProgress(1);
+        setStatusText('تم تثبيت اللعبة بنجاح!');
+
+        // ✅ الانتقال التلقائي لشاشة السيرفرات
+        setTimeout(() => {
+          navigation.replace('Servers');
+        }, 1200);
+
+      } else {
+        throw new Error(`فشل التحميل، رمز الاستجابة: ${downloadRes.statusCode}`);
+      }
+
+    } catch (error) {
+      console.error('Download/Unzip Error:', error);
+      setIsDownloading(false);
+      setHasError(true);
+      setStatusText('حدث خطأ أثناء التحميل أو فك الضغط');
+
+      // تنظيف الملف المضغوط إن وجد حتى لا يتعطل التحميل القادم
+      if (await RNFS.exists(ZIP_FILE_PATH)) {
+        await RNFS.unlink(ZIP_FILE_PATH).catch(() => {});
+      }
+
+      Alert.alert(
+        'خطأ في العملية',
+        'لم نتمكن من إكمال التحميل وفك الضغط. تأكد من توفر مساحة كافية على ذاكرة الهاتف ومن ثبات شبكة الإنترنت.',
+        [{ text: 'حسناً' }]
+      );
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{statusText}</Text>
+      <Text style={styles.title}>تطبيق GTA SAMP</Text>
+      
+      <Text style={styles.statusText}>{statusText}</Text>
 
-      {errorDetails ? (
-        <Text style={styles.errorText}>{errorDetails}</Text>
-      ) : null}
+      {/* شريط التقدم */}
+      <View style={styles.progressBarBackground}>
+        <View style={[styles.progressBarFill, { width: `${Math.round(progress * 100)}%` }]} />
+      </View>
 
-      {!isExtracting ? (
-        <>
-          <Text style={styles.fileDetails}>
-            {FILE_NAME} - {currentMB} MB / {totalMB} MB
-          </Text>
+      <Text style={styles.percentText}>{Math.round(progress * 100)}%</Text>
 
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
-          </View>
-
-          <Text style={styles.percentText}>{progressPercent}%</Text>
-        </>
-      ) : (
-        <Text style={styles.extractingText}>يرجى الانتظار، يتم تنظيم الملفات للتشغيل...</Text>
+      {isDownloading && progress < 1 && (
+        <ActivityIndicator size="small" color="#FF9800" style={{ marginTop: 15 }} />
       )}
 
-      {(errorDetails || !isDownloading) && !isExtracting ? (
-        <TouchableOpacity style={styles.retryBtn} onPress={startDownload}>
-          <Text style={styles.retryBtnText}>استكمال التنزيل 🔄</Text>
+      {hasError && (
+        <TouchableOpacity style={styles.retryButton} onPress={checkAndProcess}>
+          <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
         </TouchableOpacity>
-      ) : null}
+      )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0f0f14',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#111111',
     paddingHorizontal: 20,
   },
   title: {
-    color: '#ffffff',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
+    marginBottom: 30,
   },
-  errorText: {
-    color: '#ff5252',
-    fontSize: 13,
+  statusText: {
+    color: '#CCCCCC',
+    fontSize: 15,
     marginBottom: 15,
     textAlign: 'center',
   },
-  fileDetails: {
-    color: '#aaaaaa',
-    fontSize: 14,
-    marginBottom: 10,
-  },
-  extractingText: {
-    color: '#ffb74d',
-    fontSize: 15,
-    marginTop: 15,
-    textAlign: 'center',
-  },
   progressBarBackground: {
-    width: '90%',
+    width: width * 0.85,
     height: 12,
-    backgroundColor: '#333333',
+    backgroundColor: '#22222e',
     borderRadius: 6,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#333344',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2196F3',
+    backgroundColor: '#FF9800',
+    borderRadius: 6,
   },
   percentText: {
-    color: '#2196F3',
-    fontSize: 24,
+    color: '#FF9800',
+    fontSize: 16,
     fontWeight: 'bold',
-    marginTop: 15,
+    marginTop: 10,
   },
-  retryBtn: {
+  retryButton: {
     marginTop: 25,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#e53935',
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 25,
     borderRadius: 8,
   },
-  retryBtnText: {
-    color: '#ffffff',
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 15,
     fontWeight: 'bold',
   },
 });
-
-export default DownloadScreen;
