@@ -1,21 +1,24 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, AppState, AppStateStatus } from 'react-native';
 import RNFS from 'react-native-fs';
+import { unzip } from 'react-native-zip-archive';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOTAL_FILE_BYTES = 580869325; // 553.96 MB (الحجم الحقيقي المطلوب للملف)
 const FILE_NAME = '2.11.gtasa.zip';
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
-export const DownloadScreen = () => {
+export const DownloadScreen = ({ navigation }: any) => {
   const [currentBytes, setCurrentBytes] = useState(0);
   const [statusText, setStatusText] = useState('جاري الفحص واستئناف التحميل...');
   const [errorDetails, setErrorDetails] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   const jobIdRef = useRef<number | null>(null);
   const isDownloadingRef = useRef<boolean>(false);
 
-  // 1️⃣ منع التحميل الوهمي: قراءة الحجم الحقيقي المكتوب فعلياً في ذاكرة الهاتف
+  // 1️⃣ منع التحميل الوهمي: قراءة الحجم الحقيقي المكتوب فعلياً على ذاكرة الهاتف
   const getDiskFileSize = async (filePath: string): Promise<number> => {
     try {
       const exists = await RNFS.exists(filePath);
@@ -24,41 +27,79 @@ export const DownloadScreen = () => {
         return Number(stat?.size || 0);
       }
     } catch (err) {
-      console.log('خطأ في قراءة ملف الهاردسك:', err);
+      console.log('خطأ في قراءة الذاكرة:', err);
     }
     return 0;
   };
 
-  // 2️⃣ دالة التحميل الرئيسية واستكمال التقدم
+  // 2️⃣ دالة فك الضغط والحفظ والتوجيه إلى قائمة Main
+  const extractAndNavigate = async (zipPath: string) => {
+    try {
+      setIsExtracting(true);
+      setStatusText('جاري فك الضغط ونقل الملفات لأماكنها... 📦');
+
+      const targetPath = RNFS.DocumentDirectoryPath;
+
+      // فك ضغط ملف اللعبة
+      await unzip(zipPath, targetPath);
+
+      setStatusText('تم فك الضغط وتنظيم الملفات بنجاح! 🚀');
+
+      // حذف ملف الـ ZIP لتوفير مساحة الجهاز
+      await RNFS.unlink(zipPath).catch(() => {});
+
+      // حفظ حالة التثبيت كـ "مكتمل" حتى لا تظهر شاشة التحميل مرة أخرى عند فتح اللعبة
+      await AsyncStorage.setItem('IS_GAME_INSTALLED', 'true');
+
+      // 🔄 التوجيه المباشر إلى القائمة الرئيسية (Main)
+      setTimeout(() => {
+        if (navigation) {
+          navigation.replace('Main');
+        }
+      }, 1000);
+
+    } catch (err: any) {
+      setIsExtracting(false);
+      setStatusText('حدث خطأ أثناء فك الضغط!');
+      setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
+    }
+  };
+
+  // 3️⃣ دالة التحميل الرئيسية
   const startDownload = async () => {
-    if (isDownloadingRef.current) return;
+    if (isDownloadingRef.current || isExtracting) return;
+
+    // التأكد أولاً هل اللعبة مثبتة سابقاً للذهاب مباشرة إلى Main
+    const isInstalled = await AsyncStorage.getItem('IS_GAME_INSTALLED');
+    if (isInstalled === 'true') {
+      if (navigation) navigation.replace('Main');
+      return;
+    }
 
     setErrorDetails('');
     isDownloadingRef.current = true;
     setIsDownloading(true);
-    setStatusText('جاري التحقق من الملف المتروك بالسعة...');
+    setStatusText('جاري فحص حالة الملف والاتصال...');
 
     const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
     try {
       await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
 
-      // فحص كم ميجابايت تم تنزيلها سابقاً على ذاكرة الجهاز
       const existingDiskBytes = await getDiskFileSize(archivePath);
 
-      // 🛡️ منع التحميل الوهمي: إذا الملف مكتمل بالكامل على الهاتف لا داعي للتحميل
+      // 🛡️ إذا كان الملف محمّلاً بالكامل سابقاً بالذاكرة، انتقل مباشرة لفك الضغط ثم Main
       if (existingDiskBytes >= TOTAL_FILE_BYTES) {
         setCurrentBytes(TOTAL_FILE_BYTES);
-        setStatusText('تم التحقق: اللعبة محمّلة وجاهزة بالكامل! 🚀');
         isDownloadingRef.current = false;
         setIsDownloading(false);
+        await extractAndNavigate(archivePath);
         return;
       }
 
-      // تحديث العداد بالحجم الموجود بالهاردسك
       setCurrentBytes(existingDiskBytes);
 
-      // 🔄 استكمال التحميل: إرسال هيدر Range لجلب المتبقي فقط دون البدء من 0
+      // 🔄 إرسال Range Header لتكملة التحميل من الميجابايت الأخيرة وتجنب البدء من 0
       const headers: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile)',
         'Accept': '*/*',
@@ -81,16 +122,16 @@ export const DownloadScreen = () => {
         begin: (res) => {
           jobIdRef.current = res.jobId;
 
-          // 🛡️ منع التحميل الوهمي: إلغاء التحميل فوراً إذا أرجعت الصفحة كود خطأ (مثل 404)
+          // 🛡️ منع التحميل الوهمي: إلغاء العملية فوراً إذا كان الرابط معطلاً أو أرجع كود غير صالحة
           if (res.statusCode !== 200 && res.statusCode !== 206 && res.statusCode !== 302) {
             isResponseValid = false;
-            setStatusText(`خطأ من السيرفر: ${res.statusCode}`);
+            setStatusText(`خطأ سيرفر: ${res.statusCode}`);
             setErrorDetails('السيرفر أرجع استجابة غير صالحة. تم إيقاف التحميل لمنع التنزيل الوهمي.');
             if (jobIdRef.current) {
               RNFS.stopDownload(jobIdRef.current);
             }
           } else {
-            setStatusText('جاري تحميل اللعبة...');
+            setStatusText('جاري تحميل ملفات اللعبة...');
           }
         },
         progress: (res) => {
@@ -106,18 +147,18 @@ export const DownloadScreen = () => {
 
       const result = await downloadTask.promise;
 
-      // 🛡️ منع التحميل الوهمي: الفحص الميداني الحقيقي للهاردسك عند انتهاء العملية
+      // 🛡️ فحص الحجم الفعلي النهائى المكتوب بالهاردسك
       const finalDiskSize = await getDiskFileSize(archivePath);
 
       if (result.statusCode === 200 || result.statusCode === 206) {
         if (finalDiskSize >= TOTAL_FILE_BYTES) {
           setCurrentBytes(TOTAL_FILE_BYTES);
-          setStatusText('تم التنزيل والتحقق النهائي بنجاح! 🚀');
+          // 📦 الانتهاء الحقيقي -> التوجه الفوري لفك الضغط والدخول إلى Main
+          await extractAndNavigate(archivePath);
         } else {
-          // إذا كان أندرويد أوقف التحميل عند الخروج للتطبيقات الأخرى
           setCurrentBytes(finalDiskSize);
           setStatusText('توقف التحميل مؤقتاً عند الخروج');
-          setErrorDetails('اضغط على استكمال لمتابعة التنزيل من حيث توقف.');
+          setErrorDetails('اضغط استكمال لمتابعة التنزيل من حيث توقف.');
         }
       }
     } catch (err: any) {
@@ -132,12 +173,12 @@ export const DownloadScreen = () => {
     }
   };
 
-  // 🔄 الاستئناف التلقائي المباشر فور العودة إلى التطبيق
+  // 🔄 استئناف التحميل تلقائياً فور العودة إلى التطبيق
   useEffect(() => {
     startDownload();
 
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active' && !isDownloadingRef.current) {
+      if (nextAppState === 'active' && !isDownloadingRef.current && !isExtracting) {
         startDownload();
       }
     };
@@ -149,7 +190,6 @@ export const DownloadScreen = () => {
     };
   }, []);
 
-  // حساب النسبة المئوية
   const progressPercent = TOTAL_FILE_BYTES > 0 
     ? Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100)) 
     : 0;
@@ -165,17 +205,23 @@ export const DownloadScreen = () => {
         <Text style={styles.errorText}>{errorDetails}</Text>
       ) : null}
 
-      <Text style={styles.fileDetails}>
-        {FILE_NAME} - {currentMB} MB / {totalMB} MB
-      </Text>
+      {!isExtracting ? (
+        <>
+          <Text style={styles.fileDetails}>
+            {FILE_NAME} - {currentMB} MB / {totalMB} MB
+          </Text>
 
-      <View style={styles.progressBarBackground}>
-        <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
-      </View>
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+          </View>
 
-      <Text style={styles.percentText}>{progressPercent}%</Text>
+          <Text style={styles.percentText}>{progressPercent}%</Text>
+        </>
+      ) : (
+        <Text style={styles.extractingText}>يرجى الانتظار، يتم تنظيم الملفات للتشغيل...</Text>
+      )}
 
-      {errorDetails || !isDownloading ? (
+      {(errorDetails || !isDownloading) && !isExtracting ? (
         <TouchableOpacity style={styles.retryBtn} onPress={startDownload}>
           <Text style={styles.retryBtnText}>استكمال التنزيل 🔄</Text>
         </TouchableOpacity>
@@ -209,6 +255,12 @@ const styles = StyleSheet.create({
     color: '#aaaaaa',
     fontSize: 14,
     marginBottom: 10,
+  },
+  extractingText: {
+    color: '#ffb74d',
+    fontSize: 15,
+    marginTop: 15,
+    textAlign: 'center',
   },
   progressBarBackground: {
     width: '90%',
