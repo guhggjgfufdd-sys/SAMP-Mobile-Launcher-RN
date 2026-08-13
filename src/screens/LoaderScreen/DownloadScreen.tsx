@@ -1,192 +1,155 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid, Platform, AppState } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, AppState, AppStateStatus } from 'react-native';
 import RNFS from 'react-native-fs';
 
-const TOTAL_FILE_BYTES = 580869325; // 553.96 MB الحجم الحقيقي
+const TOTAL_FILE_BYTES = 580869325; // 553.96 MB (الحجم الحقيقي المطلوب للملف)
 const FILE_NAME = '2.11.gtasa.zip';
 const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
 
 export const DownloadScreen = () => {
   const [currentBytes, setCurrentBytes] = useState(0);
-  const [statusText, setStatusText] = useState('جاري فحص الاتصال والسيرفر...');
+  const [statusText, setStatusText] = useState('جاري الفحص واستئناف التحميل...');
   const [errorDetails, setErrorDetails] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const bytesRef = useRef<number>(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const jobIdRef = useRef<number | null>(null);
+  const isDownloadingRef = useRef<boolean>(false);
 
-  // 1. طلب الصلاحيات لمنع الأندرويد من قتل عملية الخلفية
-  const requestPermissions = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        if (Number(Platform.Version) >= 33) {
-          const perm = PermissionsAndroid.PERMISSIONS?.POST_NOTIFICATIONS || 'android.permission.POST_NOTIFICATIONS';
-          await PermissionsAndroid.request(perm as any);
-        }
-        await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
-        ).catch(() => {});
-      }
-    } catch (e) {
-      console.log('Permission bypass:', e);
-    }
-  };
-
-  // 2. منع التحميل الوهمي: الفحص المباشر للحجم الفعلي المكتوب على ذاكرة الهاتف
-  const getActualFileSizeOnDisk = async (filePath: string): Promise<number> => {
+  // 1️⃣ منع التحميل الوهمي: قراءة الحجم الحقيقي المكتوب فعلياً في ذاكرة الهاتف
+  const getDiskFileSize = async (filePath: string): Promise<number> => {
     try {
       const exists = await RNFS.exists(filePath);
       if (exists) {
         const stat = await RNFS.stat(filePath);
         return Number(stat?.size || 0);
       }
-    } catch (e) {
-      console.log('Disk Check Error:', e);
+    } catch (err) {
+      console.log('خطأ في قراءة ملف الهاردسك:', err);
     }
     return 0;
   };
 
-  // 3. منع التحميل الوهمي: التحقق من استجابة السيرفر قبل بدء التحميل
-  const verifyServerConnection = async (): Promise<boolean> => {
-    try {
-      const response = await fetch(DOWNLOAD_URL, { method: 'HEAD' });
-      if (response.status === 200 || response.status === 302 || response.status === 206) {
-        return true;
-      }
-    } catch (e) {
-      console.log('Server verification error:', e);
-    }
-    return false;
-  };
-
-  // 4. دالة التحميل الرئيسية المدعومة بالخلفية ومنع الوهمي
+  // 2️⃣ دالة التحميل الرئيسية واستكمال التقدم
   const startDownload = async () => {
-    if (isDownloading) return;
+    if (isDownloadingRef.current) return;
 
     setErrorDetails('');
+    isDownloadingRef.current = true;
     setIsDownloading(true);
-    setStatusText('جاري التحقق من السيرفر والملفات...');
+    setStatusText('جاري التحقق من الملف المتروك بالسعة...');
 
     const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
 
     try {
-      await requestPermissions();
-
-      // فحص الحجم الفعلي الحقيقي الموجود بالهاردسك وليس الذاكرة المؤقتة
-      const actualSizeOnDisk = await getActualFileSizeOnDisk(archivePath);
-
-      if (actualSizeOnDisk >= TOTAL_FILE_BYTES) {
-        bytesRef.current = TOTAL_FILE_BYTES;
-        setCurrentBytes(TOTAL_FILE_BYTES);
-        setStatusText('تم التحقق: اللعبة محمّلة وجاهزة بالكامل! 🚀');
-        setIsDownloading(false);
-        return;
-      }
-
-      // إعداد العداد من النقطة الحقيقية المكتوبة على ذاكرة الهاتف
-      bytesRef.current = actualSizeOnDisk;
-      setCurrentBytes(actualSizeOnDisk);
-
-      // فحص السيرفر لمنع التنزيل الوهمي
-      const isServerOk = await verifyServerConnection();
-      if (!isServerOk) {
-        setStatusText('تعذر الاتصال بالسيرفر الأصلي!');
-        setErrorDetails('الرابط غير متاح أو لا يوجد اتصال بالإنترنت.');
-        setIsDownloading(false);
-        return;
-      }
-
       await RNFS.mkdir(RNFS.DocumentDirectoryPath).catch(() => {});
 
-      // مؤقت سلس لتحديث الشاشة كل 250ms دون إجهاد المعالج
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(async () => {
-        // تحديث العداد بناءً على الملف الفعلي أو القيمة المسجلة
-        setCurrentBytes(bytesRef.current);
-      }, 250);
+      // فحص كم ميجابايت تم تنزيلها سابقاً على ذاكرة الجهاز
+      const existingDiskBytes = await getDiskFileSize(archivePath);
 
+      // 🛡️ منع التحميل الوهمي: إذا الملف مكتمل بالكامل على الهاتف لا داعي للتحميل
+      if (existingDiskBytes >= TOTAL_FILE_BYTES) {
+        setCurrentBytes(TOTAL_FILE_BYTES);
+        setStatusText('تم التحقق: اللعبة محمّلة وجاهزة بالكامل! 🚀');
+        isDownloadingRef.current = false;
+        setIsDownloading(false);
+        return;
+      }
+
+      // تحديث العداد بالحجم الموجود بالهاردسك
+      setCurrentBytes(existingDiskBytes);
+
+      // 🔄 استكمال التحميل: إرسال هيدر Range لجلب المتبقي فقط دون البدء من 0
       const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile)',
         'Accept': '*/*',
       };
 
-      if (actualSizeOnDisk > 0) {
-        headers['Range'] = `bytes=${actualSizeOnDisk}-`;
+      if (existingDiskBytes > 0) {
+        headers['Range'] = `bytes=${existingDiskBytes}-`;
       }
 
-      setStatusText('جاري تحميل اللعبة...');
+      let isResponseValid = true;
 
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: archivePath,
         headers,
-        progressInterval: 500,
-        progressDivider: 5, // تقليل إجهاد المعالج للعمل بالخلفية عند فتح تيك توك
+        background: true,
+        progressInterval: 400,
         connectionTimeout: 45000,
         readTimeout: 45000,
-        background: true, // تفعيل التحميل بالخلفية
-        hasProgress: true,
         begin: (res) => {
-          if (res.statusCode === 200 || res.statusCode === 206 || res.statusCode === 302) {
-            setStatusText('جاري تحميل ملفات اللعبة...');
-          } else {
+          jobIdRef.current = res.jobId;
+
+          // 🛡️ منع التحميل الوهمي: إلغاء التحميل فوراً إذا أرجعت الصفحة كود خطأ (مثل 404)
+          if (res.statusCode !== 200 && res.statusCode !== 206 && res.statusCode !== 302) {
+            isResponseValid = false;
             setStatusText(`خطأ من السيرفر: ${res.statusCode}`);
-            setErrorDetails(`رمز الاستجابة: ${res.statusCode}`);
+            setErrorDetails('السيرفر أرجع استجابة غير صالحة. تم إيقاف التحميل لمنع التنزيل الوهمي.');
+            if (jobIdRef.current) {
+              RNFS.stopDownload(jobIdRef.current);
+            }
+          } else {
+            setStatusText('جاري تحميل اللعبة...');
           }
         },
         progress: (res) => {
+          if (!isResponseValid) return;
           const written = Number(res.bytesWritten || 0);
-          bytesRef.current = actualSizeOnDisk + written;
+          const totalProgress = existingDiskBytes + written;
+
+          if (totalProgress <= TOTAL_FILE_BYTES) {
+            setCurrentBytes(totalProgress);
+          }
         },
       });
 
       const result = await downloadTask.promise;
 
-      if (timerRef.current) clearInterval(timerRef.current);
+      // 🛡️ منع التحميل الوهمي: الفحص الميداني الحقيقي للهاردسك عند انتهاء العملية
+      const finalDiskSize = await getDiskFileSize(archivePath);
 
-      // فحص حقيقي نهائي للحجم على ذاكرة الهاتف لمنع التحميل الوهمي
-      const finalDiskSize = await getActualFileSizeOnDisk(archivePath);
-
-      if (finalDiskSize >= TOTAL_FILE_BYTES) {
-        bytesRef.current = TOTAL_FILE_BYTES;
-        setCurrentBytes(TOTAL_FILE_BYTES);
-        setStatusText('تم التنزيل والتحقق الحقيقي بنجاح! 🚀');
-      } else {
-        // إذا كان الحجم الحقيقي أقل، فهذا يعني أن التحميل انقطع بالخلفية أثناء فتح تطبيقات أخرى
-        bytesRef.current = finalDiskSize;
-        setCurrentBytes(finalDiskSize);
-        setStatusText('توقف التحميل مؤقتاً أثناء التواجد بالخلفية');
-        setErrorDetails('يمكنك الضغط على استكمال لمتابعة التنزيل من حيث توقف.');
+      if (result.statusCode === 200 || result.statusCode === 206) {
+        if (finalDiskSize >= TOTAL_FILE_BYTES) {
+          setCurrentBytes(TOTAL_FILE_BYTES);
+          setStatusText('تم التنزيل والتحقق النهائي بنجاح! 🚀');
+        } else {
+          // إذا كان أندرويد أوقف التحميل عند الخروج للتطبيقات الأخرى
+          setCurrentBytes(finalDiskSize);
+          setStatusText('توقف التحميل مؤقتاً عند الخروج');
+          setErrorDetails('اضغط على استكمال لمتابعة التنزيل من حيث توقف.');
+        }
       }
     } catch (err: any) {
-      setStatusText('تعذر إكمال التحميل!');
-      setErrorDetails(`تفاصيل الخطأ: ${err?.message || String(err)}`);
+      const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
+      const savedBytes = await getDiskFileSize(archivePath);
+      setCurrentBytes(savedBytes);
+      setStatusText('توقف الاتصال');
+      setErrorDetails(`يمكنك الاستكمال من النقطة الحالية (${(savedBytes / (1024 * 1024)).toFixed(2)} MB).`);
     } finally {
-      if (timerRef.current) clearInterval(timerRef.current);
+      isDownloadingRef.current = false;
       setIsDownloading(false);
     }
   };
 
-  // 5. استئناف التحميل تلقائياً عند العودة من تيك توك إلى التطبيق
+  // 🔄 الاستئناف التلقائي المباشر فور العودة إلى التطبيق
   useEffect(() => {
     startDownload();
 
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (nextAppState === 'active') {
-        // عند العودة للتطبيق، يتم تحديث حجم الملف الفعلي واستئناف التحميل إن توقف
-        const archivePath = `${RNFS.DocumentDirectoryPath}/${FILE_NAME}`;
-        const currentSize = await getActualFileSizeOnDisk(archivePath);
-        bytesRef.current = currentSize;
-        setCurrentBytes(currentSize);
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && !isDownloadingRef.current) {
+        startDownload();
       }
-    });
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
       subscription.remove();
-      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
+  // حساب النسبة المئوية
   const progressPercent = TOTAL_FILE_BYTES > 0 
     ? Math.min(100, Math.floor((currentBytes / TOTAL_FILE_BYTES) * 100)) 
     : 0;
@@ -212,9 +175,9 @@ export const DownloadScreen = () => {
 
       <Text style={styles.percentText}>{progressPercent}%</Text>
 
-      {errorDetails ? (
+      {errorDetails || !isDownloading ? (
         <TouchableOpacity style={styles.retryBtn} onPress={startDownload}>
-          <Text style={styles.retryBtnText}>إعادة المحاولة / استكمال 🔄</Text>
+          <Text style={styles.retryBtnText}>استكمال التنزيل 🔄</Text>
         </TouchableOpacity>
       ) : null}
     </View>
