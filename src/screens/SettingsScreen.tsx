@@ -1,160 +1,181 @@
-import { APP_VERSION } from '@env';
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { setAlertUpdatingMode } from '../actions/alertActions';
 import {
-  setSettingFps,
-  setSettingFpsCounter,
-  setSettingGraphic,
-  setSettingKeyboard,
-  setSettingPageSize,
-  setUserNameSetting,
-} from '../actions/settingsActions';
-import { MainContainer, RangeLauncher, SwitchLauncher } from '../components';
-import { AlertUpdateMode } from '../components/AlertScreen/AlertUpdateMode';
-import { InputLauncher } from '../components/InputLauncher/InputLauncher';
-import { useAppDispatch } from '../hooks/useAppDispatch';
-import { useAppSelector } from '../hooks/useAppSelector';
-import { selectModeType, selectSettings } from '../selectors/settingSelectors';
-import { nameFileRecursion } from '../thunks/loaderThunks';
-import {
-  fetchFPSSetting,
-  fetchFpsSetting,
-  fetchGraphicSetting,
-  fetchKeyboardSetting,
-  fetchModeSetting,
-  fetchPageSizeSetting,
-  fetchUserNameSetting,
-} from '../thunks/settingsThunks';
-import * as Icons from './../assets/svg';
-import { styles } from './../styles/SettingsStyle';
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Switch,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import Slider from '@react-native-community/slider';
 
-export const SettingsScreen = React.memo(() => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const settings = useAppSelector(selectSettings);
-  const settingMode = useAppSelector(selectModeType);
-  const dispatch = useAppDispatch();
-
-  const onEndEditingUserName = React.useCallback((value: string) => {
-    dispatch(fetchUserNameSetting(value));
-    dispatch(setUserNameSetting({ userName: value }));
-  }, []);
-
-  const onValueChangeFps = React.useCallback((e: number) => {
-    dispatch(setSettingFps({ fpsLimit: Math.floor(e) }));
-  }, []);
-
-  const onSlidingCompleteFps = React.useCallback((e: number) => {
-    dispatch(fetchFpsSetting(Math.floor(e)));
-  }, []);
-
-  const onValueChangePageSize = React.useCallback((e: number) => {
-    dispatch(setSettingPageSize({ pageSize: Math.floor(e) }));
-  }, []);
-
-  const onSlidingCompletePageSize = React.useCallback((e: number) => {
-    dispatch(fetchPageSizeSetting(Math.floor(e)));
-  }, []);
-
-  const onValueChangeSnow = React.useCallback(async (value: boolean) => {
-    setIsLoading(true);
-
-    try {
-      const res = await dispatch(nameFileRecursion());
-      if (res) {
-        dispatch(setAlertUpdatingMode(true));
-      }
-    } catch (e) {}
-    dispatch(fetchModeSetting(value ? 1 : 0));
-
-    setIsLoading(false);
-  }, []);
-
-  const onValueChangeGraphic = React.useCallback((value: boolean) => {
-    dispatch(setSettingGraphic({ graphic: value ? 1 : 0 }));
-    dispatch(fetchGraphicSetting(value ? 1 : 0));
-  }, []);
-
-  const onValueChangeFPS = React.useCallback((value: boolean) => {
-    dispatch(setSettingFpsCounter({ fpscounter: value ? 1 : 0 }));
-    dispatch(fetchFPSSetting(value));
-  }, []);
-
-  const onValueChangeKeyboard = React.useCallback((value: boolean) => {
-    dispatch(setSettingKeyboard({ androidKeyboard: value ? 1 : 0 }));
-    dispatch(fetchKeyboardSetting(value));
-  }, []);
+export const SettingsScreen = () => {
+  const [nickname, setNickname] = useState('');
+  const [winterMap, setWinterMap] = useState(false);
+  const [improvedGraphics, setImprovedGraphics] = useState(false);
+  const [showFps, setShowFps] = useState(false);
+  const [androidKeyboard, setAndroidKeyboard] = useState(true);
+  const [fpsLimit, setFpsLimit] = useState(60);
+  const [chatLines, setChatLines] = useState(5);
 
   return (
-    <>
-      {isLoading && (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={'#228dff'} />
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.headerTitle}>الإعدادات</Text>
+
+        {/* أدخل الاسم */}
+        <View style={styles.section}>
+          <Text style={styles.label}>الاسم في اللعبة (NickName)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="مثال: Don_Corleone"
+            placeholderTextColor="#6C728E"
+            value={nickname}
+            onChangeText={setNickname}
+          />
         </View>
-      )}
-      <MainContainer>
-        <View style={styles.settingWrapper}>
-          <View style={styles.setting}>
-            <Text style={styles.title}>Настройки</Text>
-          </View>
-          <ScrollView>
-            <View style={styles.body}>
-              <View>
-                <InputLauncher
-                  Icon={Icons.UnionSvg}
-                  title={'Ваш никнейм'}
-                  value={settings.userName}
-                  onChangeText={onEndEditingUserName}
-                  placeholder={'Пример: Don_Corleone'}
-                />
-              </View>
-              <View style={styles.switch}>
-                <SwitchLauncher
-                  onValueChange={onValueChangeSnow}
-                  value={+settingMode}
-                  title={'Зимняя карта'}
-                />
-                <SwitchLauncher
-                  onValueChange={onValueChangeGraphic}
-                  value={+settings.graphic}
-                  title={'Улучшенная графика'}
-                />
-                <SwitchLauncher
-                  onValueChange={onValueChangeFPS}
-                  value={+settings.fpscounter}
-                  title={'Счётчик FPS'}
-                />
-                <SwitchLauncher
-                  onValueChange={onValueChangeKeyboard}
-                  value={+settings.androidKeyboard}
-                  title={'Android Keyboard'}
-                />
-              </View>
-              <View style={styles.range}>
-                <RangeLauncher
-                  title={'FPS в игре'}
-                  minimumValue={20}
-                  maximumValue={60}
-                  range={settings.fpsLimit}
-                  onValueChange={onValueChangeFps}
-                  onSlidingComplete={onSlidingCompleteFps}
-                />
-                <RangeLauncher
-                  title={'Количество строк в чате'}
-                  minimumValue={5}
-                  maximumValue={20}
-                  range={settings.pageSize}
-                  onValueChange={onValueChangePageSize}
-                  onSlidingComplete={onSlidingCompletePageSize}
-                />
-              </View>
-            </View>
-          </ScrollView>
-          <Text style={styles.version}>Версия {APP_VERSION}</Text>
+
+        {/* الخيارات والتفعيلات */}
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>خريطة الشتاء</Text>
+          <Switch
+            value={winterMap}
+            onValueChange={setWinterMap}
+            thumbColor={winterMap ? '#6B8AFD' : '#f4f3f4'}
+            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
+          />
         </View>
-      </MainContainer>
-      <AlertUpdateMode />
-    </>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>الجرافيك المحسن</Text>
+          <Switch
+            value={improvedGraphics}
+            onValueChange={setImprovedGraphics}
+            thumbColor={improvedGraphics ? '#6B8AFD' : '#f4f3f4'}
+            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>عداد الـ FPS</Text>
+          <Switch
+            value={showFps}
+            onValueChange={setShowFps}
+            thumbColor={showFps ? '#6B8AFD' : '#f4f3f4'}
+            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>لوحة مفاتيح أندرويد</Text>
+          <Switch
+            value={androidKeyboard}
+            onValueChange={setAndroidKeyboard}
+            thumbColor={androidKeyboard ? '#6B8AFD' : '#f4f3f4'}
+            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
+          />
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* شريط الـ FPS */}
+        <View style={styles.sliderSection}>
+          <Text style={styles.label}>معدل الإطارات (FPS في اللعبة): {fpsLimit}</Text>
+          <Slider
+            style={{ width: '100%', height: 40 }}
+            minimumValue={30}
+            maximumValue={90}
+            step={1}
+            value={fpsLimit}
+            onValueChange={setFpsLimit}
+            minimumTrackTintColor="#6B8AFD"
+            maximumTrackTintColor="#2A2D43"
+            thumbTintColor="#6B8AFD"
+          />
+        </View>
+
+        {/* شريط عدد أسطر الشات */}
+        <View style={styles.sliderSection}>
+          <Text style={styles.label}>عدد أسطر الدردشة: {chatLines}</Text>
+          <Slider
+            style={{ width: '100%', height: 40 }}
+            minimumValue={4}
+            maximumValue={15}
+            step={1}
+            value={chatLines}
+            onValueChange={setChatLines}
+            minimumTrackTintColor="#6B8AFD"
+            maximumTrackTintColor="#2A2D43"
+            thumbTintColor="#6B8AFD"
+          />
+        </View>
+
+        <Text style={styles.versionText}>الإصدار 1.0.0</Text>
+      </ScrollView>
+    </View>
   );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#12131C',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+  },
+  scrollContainer: {
+    paddingBottom: 100,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'right',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  label: {
+    color: '#A0A5BA',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  input: {
+    backgroundColor: '#1E202F',
+    borderRadius: 10,
+    padding: 14,
+    color: '#FFFFFF',
+    textAlign: 'right',
+    borderWidth: 1,
+    borderColor: '#2A2D43',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  switchLabel: {
+    color: '#FFFFFF',
+    fontSize: 15,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#2A2D43',
+    marginVertical: 15,
+  },
+  sliderSection: {
+    marginVertical: 10,
+  },
+  versionText: {
+    color: '#6C728E',
+    textAlign: 'center',
+    marginTop: 30,
+    fontSize: 12,
+  },
 });
+
+export default SettingsScreen;
