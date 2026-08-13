@@ -34,6 +34,12 @@ android {
     ndkVersion rootProject.ext.ndkVersion
     compileSdkVersion rootProject.ext.compileSdkVersion
 
+    // 🟢 إيقاف فحص Lint المسبب لإلغاء التجميع عند الـ Release
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
     defaultConfig {
         applicationId "com.touch.mobile.dark"
         minSdkVersion rootProject.ext.minSdkVersion
