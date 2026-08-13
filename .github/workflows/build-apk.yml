@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # 🟢 إضافة خيارات الذاكرة والـ Stack لسيرفر GitHub Actions لمنع خطأ StackOverflowError
+    env:
+      GRADLE_OPTS: "-Xmx4096m -Xss32m -Dorg.gradle.jvmargs='-Xmx4096m -Xss32m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss32m'"
+      _JAVA_OPTIONS: "-Xss32m"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
