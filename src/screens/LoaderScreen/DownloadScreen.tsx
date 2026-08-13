@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Dimensions, PermissionsAndroid, Platform } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ActivityIndicator, 
+  TouchableOpacity, 
+  Dimensions, 
+  PermissionsAndroid, 
+  Platform 
+} from 'react-native';
 import RNFS from 'react-native-fs';
 import { unzip } from 'react-native-zip-archive';
 
@@ -7,9 +16,10 @@ const { width } = Dimensions.get('window');
 
 // الإعدادات
 const SERVER_NAME = 'Las Venturas RP';
-const PACKAGE_NAME = 'com.touch.mobile.dark'; // تأكد أنه يطابق ما في ملف AndroidManifest
-const SERVERS_SCREEN = 'Main'; 
+const PACKAGE_NAME = 'com.touch.mobile.dark';
+const SERVERS_SCREEN = 'Main'; // الاسم الصحيح للشاشة من الروتر لديك
 
+// المسار الافتراضي للملفات
 const getTargetDirectory = () => {
   return Platform.OS === 'android' && RNFS.ExternalDirectoryPath 
     ? RNFS.ExternalDirectoryPath 
@@ -22,42 +32,57 @@ const DOWNLOAD_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-R
 
 export const DownloadScreen = ({ navigation }: any) => {
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('جاري فحص الملفات...');
+  const [statusText, setStatusText] = useState('جاري التهيئة...');
   const [mbText, setMbText] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  
+  // لمنع تكرار تشغيل دالة initApp عند التحديث
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    startProcess();
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      initApp();
+    }
   }, []);
 
-  const startProcess = async () => {
-    setIsError(false);
-    
-    // 1. طلب الصلاحيات
+  // دالة البدء: تطلب الصلاحيات أولاً ثم تقرر المسار
+  const initApp = async () => {
+    setIsLoading(true);
+    setStatusText('يرجى منح صلاحيات التخزين...');
+
     if (Platform.OS === 'android') {
-      await PermissionsAndroid.requestMultiple([
+      const granted = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
       ]);
+
+      if (granted['android.permission.WRITE_EXTERNAL_STORAGE'] !== 'granted') {
+        setStatusText('تم رفض الصلاحيات، يرجى إعادة المحاولة.');
+        setIsError(true);
+        setIsLoading(false);
+        return;
+      }
     }
 
-    // 2. فحص هل الملفات موجودة مسبقاً؟
+    // بعد الموافقة، نفحص الملفات
+    setStatusText('جاري فحص ملفات اللعبة...');
     const hasFiles = await checkCacheExists();
+    
     if (hasFiles) {
-      setStatusText('الملفات موجودة، جاري التوجيه...');
-      setTimeout(navigateToServers, 500);
-      return;
+      setStatusText('الملفات جاهزة، جاري الدخول...');
+      setTimeout(navigateToServers, 800);
+    } else {
+      startDownload();
     }
-
-    // 3. إذا لم توجد، ابدأ التحميل
-    downloadFiles();
   };
 
   const checkCacheExists = async () => {
     try {
-      const exists = await RNFS.exists(`${TARGET_PATH}/texdb`);
-      return exists;
+      // نتحقق من وجود المجلدات الأساسية
+      const texdbExists = await RNFS.exists(`${TARGET_PATH}/texdb`);
+      return texdbExists;
     } catch (e) { return false; }
   };
 
@@ -65,24 +90,25 @@ export const DownloadScreen = ({ navigation }: any) => {
     navigation.reset({ index: 0, routes: [{ name: SERVERS_SCREEN }] });
   };
 
-  const downloadFiles = async () => {
+  const startDownload = async () => {
+    setIsError(false);
     setIsLoading(true);
-    setStatusText('جاري التحميل...');
+    setStatusText('جاري بدء التحميل...');
 
     try {
-      // تنظيف المكان
+      // 1. تنظيف أي مخلفات قديمة
       if (await RNFS.exists(ZIP_FILE_PATH)) await RNFS.unlink(ZIP_FILE_PATH);
       if (!(await RNFS.exists(TARGET_PATH))) await RNFS.mkdir(TARGET_PATH);
 
+      // 2. التحميل
       const downloadTask = RNFS.downloadFile({
         fromUrl: DOWNLOAD_URL,
         toFile: ZIP_FILE_PATH,
-        connectionTimeout: 15000, // زيادة الوقت لمنع التوقف
-        readTimeout: 30000,
-        begin: (res) => { if (res.statusCode !== 200) throw new Error(); },
+        connectionTimeout: 20000,
+        readTimeout: 40000,
         progress: (res) => {
           const p = res.bytesWritten / res.contentLength;
-          setProgress(p * 0.7); // التحميل يمثل 70% من العملية
+          setProgress(p * 0.7); // 70% للتحميل
           setMbText(`${(res.bytesWritten / 1024 / 1024).toFixed(1)} MB / ${(res.contentLength / 1024 / 1024).toFixed(1)} MB`);
         },
       });
@@ -90,24 +116,24 @@ export const DownloadScreen = ({ navigation }: any) => {
       const res = await downloadTask.promise;
 
       if (res.statusCode === 200) {
-        // فك الضغط
-        setStatusText('جاري فك الضغط (لا تغلق التطبيق)...');
+        // 3. فك الضغط التلقائي
+        setStatusText('جاري فك الضغط...');
         setProgress(0.85);
         
         await unzip(ZIP_FILE_PATH, TARGET_PATH);
 
-        // حذف الملف المضغوط بعد الفك لتوفير المساحة
+        // 4. حذف ملف الـ Zip لتوفير المساحة
         await RNFS.unlink(ZIP_FILE_PATH);
         
-        setStatusText('اكتمل التثبيت!');
+        setStatusText('اكتمل التثبيت بنجاح!');
         setProgress(1);
         setTimeout(navigateToServers, 1000);
       } else {
-        throw new Error();
+        throw new Error('فشل الخادم');
       }
     } catch (err) {
       setIsError(true);
-      setStatusText('حدث خطأ في التحميل. تأكد من اتصال الإنترنت.');
+      setStatusText('حدث خطأ أثناء التحميل. تأكد من الإنترنت.');
       setIsLoading(false);
     }
   };
@@ -122,10 +148,10 @@ export const DownloadScreen = ({ navigation }: any) => {
       </View>
       
       <Text style={styles.percent}>{Math.round(progress * 100)}%</Text>
-      <Text style={styles.mbText}>{mbText}</Text>
+      {mbText !== '' && <Text style={styles.mbText}>{mbText}</Text>}
 
       {isError && (
-        <TouchableOpacity style={styles.btnRetry} onPress={startProcess}>
+        <TouchableOpacity style={styles.btnRetry} onPress={initApp}>
           <Text style={styles.btnText}>إعادة المحاولة</Text>
         </TouchableOpacity>
       )}
@@ -136,7 +162,7 @@ export const DownloadScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#101010', justifyContent: 'center', alignItems: 'center', padding: 20 },
   serverTitle: { color: '#FF9000', fontSize: 26, fontWeight: 'bold', marginBottom: 20 },
-  status: { color: '#DDD', marginBottom: 10 },
+  status: { color: '#DDD', marginBottom: 10, textAlign: 'center' },
   barContainer: { width: '90%', height: 10, backgroundColor: '#333', borderRadius: 5, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#FF9000' },
   percent: { color: '#FF9000', marginTop: 10, fontWeight: 'bold' },
