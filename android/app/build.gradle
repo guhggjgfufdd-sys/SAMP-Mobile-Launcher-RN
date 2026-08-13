@@ -6,7 +6,7 @@ import com.android.build.OutputFile
 import org.apache.tools.ant.taskdefs.condition.Os
 
 project.ext.react = [
-    enableHermes: true, // clean and rebuild if changing
+    enableHermes: true,
 ]
 
 apply from: "../../node_modules/react-native/react.gradle"
@@ -18,10 +18,10 @@ def enableHermes = project.ext.react.get("enableHermes", false);
 
 def reactNativeArchitectures() {
     def value = project.getProperties().get("reactNativeArchitectures")
-    return value ? value.split(",") : ["armeabi-v7a"]
+    return value ? value.split(",") : ["armeabi-v7a", "arm64-v8a"]
 }
 
-// 🟢 توحيد مكتبات fbjni واستبدال النسخة المتعارضة بدون حذف الكلاسات المطلوبة
+// 🟢 توحيد مكتبات fbjni واستبدال النسخة المتعارضة بدون حذف الكلاسات
 configurations.all {
     resolutionStrategy {
         dependencySubstitution {
@@ -44,7 +44,7 @@ android {
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
         
         ndk {
-            abiFilters "armeabi-v7a"
+            abiFilters "armeabi-v7a", "arm64-v8a"
         }
     }
 
@@ -159,8 +159,6 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
 
     implementation "com.facebook.react:react-native:+"
-    
-    // 🟢 استدجلاء النسخة الشاملة لمكتبة fbjni بشكل مباشر
     implementation 'com.facebook.fbjni:fbjni:0.2.2'
 
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
