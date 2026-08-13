@@ -7,10 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # 🟢 إجبار نظام Java في السيرفر على استخدام 32MB للـ Stack لجميع عمليات Kotlin و Gradle
+    # 🟢 إجبار كافة عمليات جافا الفرعية (بما فيها Kotlin Workers) على استخدام 64MB للـ Stack
     env:
-      _JAVA_OPTIONS: "-Xmx4096m -Xss32m"
-      GRADLE_OPTS: "-Xmx4096m -Xss32m -Dorg.gradle.jvmargs='-Xmx4096m -Xss32m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss32m'"
+      JAVA_TOOL_OPTIONS: "-Xss64m -Xmx4096m"
+      _JAVA_OPTIONS: "-Xss64m -Xmx4096m"
+      GRADLE_OPTS: "-Xmx4096m -Xss64m -Dorg.gradle.jvmargs='-Xmx4096m -Xss64m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss64m'"
 
     steps:
       - name: Checkout repository
