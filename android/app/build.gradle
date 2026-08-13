@@ -11,34 +11,23 @@ project.ext.react = [
 
 apply from: "../../node_modules/react-native/react.gradle"
 
-/**
- * Set this to true to create two separate APKs instead of one:
- * - An APK that only works on ARM devices
- * - An APK that only works on x86 devices
- */
 def enableSeparateBuildPerCPUArchitecture = false
-
-/**
- * Run Proguard to shrink the Java bytecode in release builds.
- */
 def enableProguardInReleaseBuilds = false
-
 def jscFlavor = 'org.webkit:android-jsc:+'
-
 def enableHermes = project.ext.react.get("enableHermes", false);
 
-/**
- * Architectures to build native code for.
- * حصر المعمارية على armeabi-v7a لمنع الكراش والشاشة السوداء
- */
 def reactNativeArchitectures() {
     def value = project.getProperties().get("reactNativeArchitectures")
     return value ? value.split(",") : ["armeabi-v7a"]
 }
 
+// 🟢 حظر استدعاء fbjni-java-only المتسببة في تكرار الكلاسات (Duplicate Classes)
+configurations.all {
+    exclude group: 'com.facebook.fbjni', module: 'fbjni-java-only'
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
-
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     defaultConfig {
@@ -53,6 +42,13 @@ android {
         ndk {
             abiFilters "armeabi-v7a"
         }
+    }
+
+    // 🟢 اختيار النسخة الأولى دائماً لمنع تعارض ملفات الـ .so أثناء الـ merge
+    packagingOptions {
+        pickFirst '**/libfbjni.so'
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libglog.so'
     }
 
     if (isNewArchitectureEnabled()) {
@@ -159,7 +155,7 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
 
-    implementation "com.facebook.react:react-native:+" // From node_modules
+    implementation "com.facebook.react:react-native:+"
 
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation "androidx.core:core-splashscreen:1.0.0"
