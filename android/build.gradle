@@ -5,7 +5,7 @@ buildscript {
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "23.1.7779620"
-        kotlinVersion = "1.8.22"
+        kotlinVersion = "1.9.20"
     }
     repositories {
         google()
@@ -39,6 +39,11 @@ subprojects {
         if (project.hasProperty("android")) {
             project.android {
                 compileSdkVersion 34
+            }
+        }
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
             }
         }
     }
