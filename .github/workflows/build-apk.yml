@@ -7,11 +7,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      JAVA_TOOL_OPTIONS: "-Xss32m -Xmx4096m"
-      _JAVA_OPTIONS: "-Xss32m -Xmx4096m"
-      GRADLE_OPTS: "-Xmx4096m -Xss32m -Dorg.gradle.jvmargs='-Xmx4096m -Xss32m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss32m'"
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,11 +32,9 @@ jobs:
         run: cd android && ./gradlew clean
 
       - name: Build Release APK
-        env:
-          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -Xss16m"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
