@@ -74,7 +74,7 @@ public class MainApplication extends MultiDexApplication implements ReactApplica
       try {
         /*
          We use reflection here to pick up the class that initializes Flipper,
-        since Flipper library is not available in release mode
+         since Flipper library is not available in release mode
         */
         Class<?> aClass = Class.forName("com.touch.mobile.dark.ReactNativeFlipper");
         aClass
