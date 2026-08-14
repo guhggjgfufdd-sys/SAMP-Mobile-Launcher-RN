@@ -1,14 +1,11 @@
-import React from 'react';
-import { AppRegistry } from 'react-native';
-import { Provider } from 'react-redux';
-import { App } from './App';
-import { name as appName } from './app.json';
-import { store } from './src/store/store';
+import {AppRegistry, Text, View} from 'react-native';
+import {name as appName} from './app.json';
 
-const RNRedux = () => (
-  <Provider store={store}>
-    <App />
-  </Provider>
+// اختبار بسيط — إذا ظهر "TEST WORKS" يعني الـ Bundle يشتغل
+const TestApp = () => (
+  <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'black'}}>
+    <Text style={{color: 'red', fontSize: 30}}>TEST WORKS!</Text>
+  </View>
 );
 
-AppRegistry.registerComponent(appName, () => RNRedux);
+AppRegistry.registerComponent(appName, () => TestApp);
