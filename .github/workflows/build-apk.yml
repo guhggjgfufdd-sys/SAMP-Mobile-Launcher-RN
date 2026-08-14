@@ -16,16 +16,22 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Restore original project files
+        run: |
+          curl -o package.json https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/package.json
+          curl -o metro.config.js https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/metro.config.js
+          curl -o babel.config.js https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/babel.config.js
+          mkdir -p android
+          curl -o android/settings.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/settings.gradle
+          curl -o android/build.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/build.gradle
+          mkdir -p android/app
+          curl -o android/app/build.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/app/build.gradle
+
       - name: Install dependencies
         run: |
           npm install -g yarn
-          yarn install
-
-      - name: Fix missing gradle plugin
-        run: |
-          if [ ! -d "node_modules/@react-native/gradle-plugin" ]; then
-            yarn add @react-native/gradle-plugin@0.72.0 --ignore-engines
-          fi
+          rm -rf node_modules yarn.lock
+          yarn install --ignore-engines
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
