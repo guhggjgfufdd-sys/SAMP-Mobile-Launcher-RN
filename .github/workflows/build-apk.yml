@@ -14,16 +14,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
 
-      - name: Install Yarn
-        run: npm install -g yarn
-
-      - name: Use original package.json
+      - name: Install dependencies
         run: |
-          curl -o package.json https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/package.json
-          rm -rf node_modules package-lock.json yarn.lock
-          yarn install --ignore-engines
+          npm install -g yarn
+          yarn install
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
