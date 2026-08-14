@@ -7,12 +7,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # 🟢 إجبار كافة عمليات جافا الفرعية (بما فيها Kotlin Workers) على استخدام 64MB للـ Stack
-    env:
-      JAVA_TOOL_OPTIONS: "-Xss64m -Xmx4096m"
-      _JAVA_OPTIONS: "-Xss64m -Xmx4096m"
-      GRADLE_OPTS: "-Xmx4096m -Xss64m -Dorg.gradle.jvmargs='-Xmx4096m -Xss64m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss64m'"
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,13 +33,15 @@ jobs:
 
       - name: Build Release APK
         env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx4g -Xss8m -XX:MaxMetaspaceSize=1024m' -Dkotlin.daemon.jvmargs='-Xmx2g -Xss8m'"
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+
