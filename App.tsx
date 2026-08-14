@@ -1,16 +1,25 @@
 import React, { useEffect } from 'react';
-import { BackHandler, Text, View } from 'react-native';
+import { BackHandler } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationRouter } from './src/routers/navigation-router';
 
 export default function App() {
   useEffect(() => {
-    const backAction = () => true;
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    const backAction = () => {
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
     return () => backHandler.remove();
   }, []);
 
   return (
-    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'blue'}}>
-      <Text style={{color: 'white', fontSize: 24}}>APP LOADED!</Text>
-    </View>
+    <SafeAreaProvider>
+      <NavigationRouter />
+    </SafeAreaProvider>
   );
 }
