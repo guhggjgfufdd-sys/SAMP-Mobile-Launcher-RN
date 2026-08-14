@@ -25,6 +25,15 @@ jobs:
       - name: Clean previous builds
         run: cd android && ./gradlew clean
 
+      - name: Build JS Bundle manually
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle
+
       - name: Build Release APK
         run: cd android && ./gradlew assembleRelease
 
