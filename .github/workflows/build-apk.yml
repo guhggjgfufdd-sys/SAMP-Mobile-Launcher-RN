@@ -21,6 +21,17 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
+
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -33,8 +44,8 @@ jobs:
 
       - name: Build Release APK
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx4096m -Xss16m -XX:MaxMetaspaceSize=1024m'"
-          JAVA_TOOL_OPTIONS: "-Xss16m -Xmx4096m"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx2048m -Xss16m -XX:MaxMetaspaceSize=512m'"
+          JAVA_TOOL_OPTIONS: "-Xss16m -Xmx2048m"
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon
