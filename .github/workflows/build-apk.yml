@@ -16,16 +16,13 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install Yarn
+        run: npm install -g yarn
+
       - name: Clean install dependencies
         run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-
-      - name: Ensure SVG transformer is installed
-        run: |
-          if [ ! -d "node_modules/react-native-svg-transformer" ]; then
-            npm install react-native-svg-transformer --legacy-peer-deps
-          fi
+          rm -rf node_modules package-lock.json yarn.lock
+          yarn install
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
