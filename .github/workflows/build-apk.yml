@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      JAVA_TOOL_OPTIONS: "-Xss32m -Xmx4096m"
+      _JAVA_OPTIONS: "-Xss32m -Xmx4096m"
+      GRADLE_OPTS: "-Xmx4096m -Xss32m -Dorg.gradle.jvmargs='-Xmx4096m -Xss32m' -Dkotlin.daemon.jvmargs='-Xmx2048m -Xss32m'"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,7 +38,6 @@ jobs:
 
       - name: Build Release APK
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx4g -Xss8m -XX:MaxMetaspaceSize=1024m' -Dkotlin.daemon.jvmargs='-Xmx2g -Xss8m'"
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd android
@@ -44,4 +48,3 @@ jobs:
         with:
           name: release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
-
