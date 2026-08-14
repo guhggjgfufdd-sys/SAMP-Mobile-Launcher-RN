@@ -2,6 +2,7 @@ apply plugin: "com.android.application"
 
 project.ext.react = [
     enableHermes: false,
+    newArchEnabled: false,
 ]
 
 apply from: "../../node_modules/react-native/react.gradle"
@@ -15,7 +16,7 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId "com.samp.launcher"
+        applicationId "com.touch.mobile.dark"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -74,12 +75,11 @@ android {
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
     }
-}
 
-// إجبار نسخة zip4j المستقرة
-configurations.all {
-    resolutionStrategy {
-        force 'net.lingala.zip4j:zip4j:2.9.0'
+    configurations.all {
+        resolutionStrategy {
+            force 'net.lingala.zip4j:zip4j:2.9.0'
+        }
     }
 }
 
@@ -90,7 +90,7 @@ dependencies {
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
     implementation "androidx.recyclerview:recyclerview:1.2.1"
     implementation 'com.tuyenmonkey:mkloader:1.4.0'
-
+    implementation "androidx.multidex:multidex:2.0.1"
     implementation jscFlavor
 }
 
