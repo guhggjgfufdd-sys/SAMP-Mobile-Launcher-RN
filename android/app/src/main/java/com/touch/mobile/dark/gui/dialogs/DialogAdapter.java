@@ -51,7 +51,7 @@ public class DialogAdapter extends RecyclerView.Adapter {
         ArrayList<TextView> fields = new ArrayList<>();
         for (int i = 0; i < headers.length; i++) {
             TextView field = holder.mFields.get(i);
-            field.setText(Utils.transformColors(headers[i].replace("\\t", "")));
+            field.setText(Utils.transfromColors(headers[i].replace("\\t", "")));
             field.setVisibility(View.VISIBLE);
             fields.add(field);
         }
