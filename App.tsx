@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BackHandler, Text, View } from 'react-native';
 
-export const App = () => {
+export default function App() {
   useEffect(() => {
     const backAction = () => true;
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
@@ -13,4 +13,4 @@ export const App = () => {
       <Text style={{color: 'white', fontSize: 24}}>APP LOADED!</Text>
     </View>
   );
-};
+}
