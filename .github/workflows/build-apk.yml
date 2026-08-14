@@ -24,6 +24,11 @@ jobs:
           rm -rf node_modules package-lock.json yarn.lock
           yarn install
 
+      - name: Install missing packages
+        run: |
+          yarn add react-native-svg-transformer
+          yarn add babel-plugin-transform-remove-console
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
