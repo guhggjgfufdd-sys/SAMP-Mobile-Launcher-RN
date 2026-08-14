@@ -6,8 +6,7 @@ buildscript {
         minSdkVersion = 21
         compileSdkVersion = 33
         targetSdkVersion = 33
-
-        // تحديث كوتلن إلى 1.8.22 لحل المشاكل السابقة
+        ndkVersion = "23.1.7779620"
         kotlinVersion = "1.8.22"
         kotlin_version = "1.8.22"
     }
@@ -18,7 +17,6 @@ buildscript {
     dependencies {
         classpath('com.android.tools.build:gradle:7.4.2')
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
-        // إضافات Google و Firebase المطلوبة لمشروعك
         classpath('com.google.gms:google-services:4.3.15')
         classpath('com.google.firebase:firebase-crashlytics-gradle:2.9.9')
     }
