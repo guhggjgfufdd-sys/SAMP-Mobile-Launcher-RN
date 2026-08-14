@@ -1,16 +1,14 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
-import {
-  AnimatedTabBarNavigator,
-  DotSize,
-} from 'react-native-animated-nav-tab-bar';
 import RNBootSplash from 'react-native-bootsplash';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Icons from '../assets/svg';
 import { setModeType } from '../actions/settingsActions';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { DonateScreen } from '../screens/DonateScreen';
@@ -25,20 +23,19 @@ import { UpdateScreen } from '../screens/LoaderScreen/UpdateScreen';
 import { UpdateStartScreen } from '../screens/LoaderScreen/UpdateStartScreen';
 import { ModeScreen } from '../screens/ModeScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import * as Icons from '../assets/svg';
 import { navigationRef } from './RootNavigation';
 
 const Stack = createNativeStackNavigator();
+const Tabs = createBottomTabNavigator();
 
 export const NavigationRouter = React.memo(() => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isModeType, setIsModeType] = useState<boolean>(false);
-
   const dispatch = useAppDispatch();
 
   useEffect(() => {
     AsyncStorage.getItem('modeType')
-      .then(res => {
+      .then((res) => {
         if (res !== null) {
           dispatch(setModeType(+res));
           setIsModeType(true);
@@ -105,30 +102,27 @@ export const NavigationRouter = React.memo(() => {
   );
 });
 
-const Tabs = AnimatedTabBarNavigator();
-
 export const TabBarNavigation = React.memo(() => {
   return (
     <Tabs.Navigator
-      initialRouteName="اللعب"
+      initialRouteName="الرئيسية"
       backBehavior="initialRoute"
-      tabBarOptions={{
-        activeTintColor: '#ffffff',
-        inactiveTintColor: '#b6c4ee7f',
-        activeBackgroundColor: '#6b8afd',
-      }}
-      appearance={{
-        shadow: false,
-        floating: true,
-        dotSize: DotSize.MEDIUM,
-        tabBarBackground: '#212231',
+      screenOptions={{
+        tabBarActiveTintColor: '#ffffff',
+        tabBarInactiveTintColor: '#b6c4ee7f',
+        tabBarActiveBackgroundColor: '#6b8afd',
+        tabBarStyle: {
+          backgroundColor: '#212231',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
       }}>
       <Tabs.Screen
         name="المتجر"
         component={DonateScreen}
         options={{
           headerShown: true,
-          animation: 'fade',
           headerTransparent: true,
           tabBarIcon: ({ color, size }: any) => (
             <Icons.WalletSvg width={size} height={size} fill={color} />
@@ -136,11 +130,10 @@ export const TabBarNavigation = React.memo(() => {
         }}
       />
       <Tabs.Screen
-        name="اللعب"
+        name="الرئيسية"
         component={GameScreen}
         options={{
           headerShown: true,
-          animation: 'fade',
           headerTransparent: true,
           tabBarIcon: ({ color, size }: any) => (
             <Icons.PlaySvg width={size} height={size} fill={color} />
@@ -152,7 +145,6 @@ export const TabBarNavigation = React.memo(() => {
         component={SettingsScreen}
         options={{
           headerShown: true,
-          animation: 'fade',
           headerTransparent: true,
           tabBarIcon: ({ color, size }: any) => (
             <Icons.SettingSvg width={size} height={size} fill={color} />
