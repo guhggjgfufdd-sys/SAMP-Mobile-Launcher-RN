@@ -7,7 +7,7 @@ buildscript {
         compileSdkVersion = 33
         targetSdkVersion = 33
 
-        // تحديث إصدار كوتلن إلى 1.8.22 لحل مشكلة التكرار المفرغ و StackOverflowError
+        // تحديث كوتلن إلى 1.8.22
         kotlinVersion = "1.8.22"
         kotlin_version = "1.8.22"
     }
@@ -18,6 +18,8 @@ buildscript {
     dependencies {
         classpath('com.android.tools.build:gradle:7.4.2')
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        // إضافة إضافة Google Services المطلوبة لمشروعك
+        classpath('com.google.gms:google-services:4.3.15')
     }
 }
 
