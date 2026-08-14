@@ -3,10 +3,10 @@ apply plugin: "com.facebook.react"
 
 project.ext.react = [
     enableHermes: false,
-    hermesEnabled: false,
     bundleInRelease: false,
 ]
 
+project.ext.hermesEnabled = false
 def enableSeparateBuildPerCPUArchitecture = false
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
