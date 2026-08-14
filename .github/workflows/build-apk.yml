@@ -32,9 +32,12 @@ jobs:
         run: cd android && ./gradlew clean
 
       - name: Build Release APK
+        env:
+          _JAVA_OPTIONS: "-Xss16m -Xmx4096m"
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -Xss16m"
+          ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
