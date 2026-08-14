@@ -88,7 +88,7 @@ dependencies {
     implementation "com.facebook.react:react-native:+"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
-    implementation 'com.github.tuyenmonkey:mkloader:1.2.0'
+    implementation 'com.tuyenmonkey:mkloader:1.4.0'
 
     implementation jscFlavor
 }
