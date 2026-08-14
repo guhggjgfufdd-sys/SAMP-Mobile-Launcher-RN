@@ -1,94 +1,97 @@
-package com.touch.mobile.dark;
+apply plugin: "com.android.application"
 
-import android.app.Application;
-import android.content.Context;
-import com.facebook.react.PackageList;
-import com.facebook.react.ReactApplication;
-import com.facebook.react.ReactInstanceManager;
-import com.facebook.react.ReactNativeHost;
-import com.facebook.react.ReactPackage;
-import com.facebook.react.config.ReactFeatureFlags;
-import com.facebook.soloader.SoLoader;
-import com.touch.mobile.dark.newarchitecture.MainApplicationReactNativeHost;
-import com.touch.mobile.dark.modules.GtaSetupModulePackage;
-import java.lang.reflect.InvocationTargetException;
-import java.util.List;
-import androidx.multidex.MultiDexApplication;
+project.ext.react = [
+    enableHermes: false,
+    newArchEnabled: false,
+]
 
-public class MainApplication extends MultiDexApplication implements ReactApplication {
+apply from: "../../node_modules/react-native/react.gradle"
 
-  private final ReactNativeHost mReactNativeHost =
-      new ReactNativeHost(this) {
-        @Override
-        public boolean getUseDeveloperSupport() {
-          return BuildConfig.DEBUG;
-        }
+def enableSeparateBuildPerCPUArchitecture = false
+def enableProguardInReleaseBuilds = false
+def jscFlavor = 'org.webkit:android-jsc:+'
 
-        @Override
-        protected List<ReactPackage> getPackages() {
-          @SuppressWarnings("UnnecessaryLocalVariable")
-          List<ReactPackage> packages = new PackageList(this).getPackages();
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // packages.add(new MyReactNativePackage());
-          packages.add(new GtaSetupModulePackage());
-          return packages;
-        }
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    compileSdkVersion rootProject.ext.compileSdkVersion
 
-        @Override
-        protected String getJSMainModuleName() {
-          return "index";
-        }
-      };
-
-  private final ReactNativeHost mNewArchitectureNativeHost =
-      new MainApplicationReactNativeHost(this);
-
-  @Override
-  public ReactNativeHost getReactNativeHost() {
-    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-      return mNewArchitectureNativeHost;
-    } else {
-      return mReactNativeHost;
+    defaultConfig {
+        applicationId "com.touch.mobile.dark"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        multiDexEnabled true
     }
-  }
 
-  @Override
-  public void onCreate() {
-    super.onCreate();
-    // If you opted-in for the New Architecture, we enable the TurboModule system
-    ReactFeatureFlags.useTurboModules = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED;
-    SoLoader.init(this, /* native exopackage */ false);
-    initializeFlipper(this, getReactNativeHost().getReactInstanceManager());
-  }
-
-  /**
-   * Loads Flipper in React Native templates. Call this in the onCreate method with something like
-   * initializeFlipper(this, getReactNativeHost().getReactInstanceManager());
-   *
-   * @param context
-   * @param reactInstanceManager
-   */
-  private static void initializeFlipper(
-      Context context, ReactInstanceManager reactInstanceManager) {
-    if (BuildConfig.DEBUG) {
-      try {
-        /*
-         We use reflection here to pick up the class that initializes Flipper,
-         since Flipper library is not available in release mode
-        */
-        Class<?> aClass = Class.forName("com.touch.mobile.dark.ReactNativeFlipper");
-        aClass
-            .getMethod("initializeFlipper", Context.class, ReactInstanceManager.class)
-            .invoke(null, context, reactInstanceManager);
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
-      } catch (NoSuchMethodException e) {
-        e.printStackTrace();
-      } catch (IllegalAccessException e) {
-        e.printStackTrace();
-      } catch (InvocationTargetException e) {
-        e.printStackTrace();
-      }
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
     }
-  }
+
+    splits {
+        abi {
+            reset()
+            enable enableSeparateBuildPerCPUArchitecture
+            universalApk false
+            include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
+        }
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        release {
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
+                storeFile file(MYAPP_RELEASE_STORE_FILE)
+                storePassword MYAPP_RELEASE_STORE_PASSWORD
+                keyAlias MYAPP_RELEASE_KEY_ALIAS
+                keyPassword MYAPP_RELEASE_KEY_PASSWORD
+            } else {
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+
+    packagingOptions {
+        pickFirst '**/libjsc.so'
+        pickFirst '**/libc++_shared.so'
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force 'net.lingala.zip4j:zip4j:2.9.0'
+        }
+    }
 }
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation "com.facebook.react:react-native:+"
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "androidx.recyclerview:recyclerview:1.2.1"
+    implementation 'com.tuyenmonkey:mkloader:1.4.0'
+    implementation "androidx.multidex:multidex:2.0.1"
+    implementation jscFlavor
+}
+
+apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeM
