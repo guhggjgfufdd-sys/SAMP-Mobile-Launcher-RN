@@ -78,6 +78,13 @@ android {
     }
 }
 
+// حل مشكلة StackOverflowError بإجبار Gradle على استخدام zip4j المستقرة
+configurations.all {
+    resolutionStrategy {
+        force 'net.lingala.zip4j:zip4j:2.9.0'
+    }
+}
+
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "com.facebook.react:react-native:+"
