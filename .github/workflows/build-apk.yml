@@ -38,7 +38,7 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon -Pkotlin.compiler.execution.strategy=in-process
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
