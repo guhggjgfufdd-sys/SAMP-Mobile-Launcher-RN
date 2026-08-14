@@ -43,7 +43,7 @@ public class MainApplication extends MultiDexApplication implements ReactApplica
 
   @Override
   public ReactNativeHost getReactNativeHost() {
-    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
+    if (false) {  // <-- تعديل هنا: بدل BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
       return mNewArchitectureNativeHost;
     } else {
       return mReactNativeHost;
@@ -53,7 +53,7 @@ public class MainApplication extends MultiDexApplication implements ReactApplica
   @Override
   public void onCreate() {
     super.onCreate();
-    ReactFeatureFlags.useTurboModules = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED;
+    ReactFeatureFlags.useTurboModules = false;  // <-- تعديل هنا: بدل BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
     SoLoader.init(this, /* native exopackage */ false);
     initializeFlipper(this, getReactNativeHost().getReactInstanceManager());
   }
