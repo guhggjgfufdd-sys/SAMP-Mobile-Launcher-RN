@@ -51,7 +51,7 @@ public class DialogAdapter extends RecyclerView.Adapter {
         ArrayList<TextView> fields = new ArrayList<>();
         for (int i = 0; i < headers.length; i++) {
             TextView field = holder.mFields.get(i);
-            field.setText(Utils.transfromColors(headers[i].replace("\\t", "")));
+            field.setText(Utils.transformColors(headers[i].replace("\\t", "")));
             field.setVisibility(View.VISIBLE);
             fields.add(field);
         }
@@ -66,15 +66,15 @@ public class DialogAdapter extends RecyclerView.Adapter {
         }
 
         holder.getView().setOnClickListener(view -> {
-            if (this.mCurrentSelectedPosition != holder.getAdapterPosition()) {
+            if (this.mCurrentSelectedPosition != holder.getBindingAdapterPosition()) {
                 View view2 = this.mCurrentSelectedView;
                 if (view2 != null) {
                     view2.setVisibility(View.GONE);
                 }
-                this.mCurrentSelectedPosition = holder.getAdapterPosition();
+                this.mCurrentSelectedPosition = holder.getBindingAdapterPosition();
                 this.mCurrentSelectedView = holder.mFieldBg;
                 holder.mFieldBg.setVisibility(View.VISIBLE);
-                this.mOnClickListener.onClick(holder.getAdapterPosition(), holder.mFields.get(0).getText().toString());
+                this.mOnClickListener.onClick(holder.getBindingAdapterPosition(), holder.mFields.get(0).getText().toString());
                 return;
             }
             OnDoubleClickListener onDoubleClickListener = this.mOnDoubleClickListener;
