@@ -24,41 +24,41 @@ jobs:
           rm -rf node_modules package-lock.json yarn.lock
           yarn install --ignore-engines
 
-      - name: Install all missing packages
+      - name: Install compatible packages
         run: |
-          yarn add react-native-svg-transformer --ignore-engines
-          yarn add babel-plugin-transform-remove-console --ignore-engines
-          yarn add react-native-dotenv --ignore-engines
-          yarn add @gorhom/bottom-sheet --ignore-engines
-          yarn add @react-native-async-storage/async-storage --ignore-engines
-          yarn add @react-navigation/native @react-navigation/bottom-tabs --ignore-engines
-          yarn add react-native-bootsplash --ignore-engines
-          yarn add react-native-gesture-handler --ignore-engines
-          yarn add react-native-safe-area-context --ignore-engines
-          yarn add react-native-screens --ignore-engines
-          yarn add react-native-reanimated --ignore-engines
-          yarn add react-native-vector-icons --ignore-engines
-          yarn add react-native-linear-gradient --ignore-engines
-          yarn add react-native-fs --ignore-engines
-          yarn add react-native-device-info --ignore-engines
-          yarn add react-native-fast-image --ignore-engines
-          yarn add react-native-progress --ignore-engines
-          yarn add react-native-shadow-2 --ignore-engines
-          yarn add react-native-size-matters --ignore-engines
-          yarn add react-native-snowflakes --ignore-engines
-          yarn add react-native-svg --ignore-engines
-          yarn add react-native-svg-icon --ignore-engines
-          yarn add react-native-switch --ignore-engines
-          yarn add lottie-react-native --ignore-engines
-          yarn add react-native-animated-nav-tab-bar --ignore-engines
-          yarn add react-native-awesome-alerts --ignore-engines
-          yarn add react-native-reanimated-carousel --ignore-engines
-          yarn add react-native-quick-base64 --ignore-engines
-          yarn add axios --ignore-engines
-          yarn add ini --ignore-engines
-          yarn add buffer --ignore-engines
-          yarn add styled-components --ignore-engines
-          yarn add react-redux redux redux-thunk --ignore-engines
+          yarn add react-native-svg-transformer@^1.0.0 --ignore-engines
+          yarn add babel-plugin-transform-remove-console@^6.9.4 --ignore-engines
+          yarn add react-native-dotenv@^3.4.11 --ignore-engines
+          yarn add @gorhom/bottom-sheet@^4 --ignore-engines
+          yarn add @react-native-async-storage/async-storage@^1.17.10 --ignore-engines
+          yarn add @react-navigation/native@^6.0.13 @react-navigation/bottom-tabs@^6.4.0 --ignore-engines
+          yarn add react-native-bootsplash@^4.3.2 --ignore-engines
+          yarn add react-native-gesture-handler@^2.8.0 --ignore-engines
+          yarn add react-native-safe-area-context@^4.4.1 --ignore-engines
+          yarn add react-native-screens@^3.18.2 --ignore-engines
+          yarn add react-native-reanimated@^2.12.0 --ignore-engines
+          yarn add react-native-vector-icons@^9.2.0 --ignore-engines
+          yarn add react-native-linear-gradient@^2.6.2 --ignore-engines
+          yarn add react-native-fs@^2.20.0 --ignore-engines
+          yarn add react-native-device-info@^10.3.0 --ignore-engines
+          yarn add react-native-fast-image@^8.6.3 --ignore-engines
+          yarn add react-native-progress@^5.0.0 --ignore-engines
+          yarn add react-native-shadow-2@^7.0.6 --ignore-engines
+          yarn add react-native-size-matters@^0.4.0 --ignore-engines
+          yarn add react-native-snowflakes@^1.0.3 --ignore-engines
+          yarn add react-native-svg@^13.4.0 --ignore-engines
+          yarn add react-native-svg-icon@^0.10.0 --ignore-engines
+          yarn add react-native-switch@^1.5.1 --ignore-engines
+          yarn add lottie-react-native@^5.1.4 --ignore-engines
+          yarn add react-native-animated-nav-tab-bar@^3.1.8 --ignore-engines
+          yarn add react-native-awesome-alerts@^2.0.0 --ignore-engines
+          yarn add react-native-reanimated-carousel@^3.1.5 --ignore-engines
+          yarn add react-native-quick-base64@^2.0.5 --ignore-engines
+          yarn add axios@^1.6.7 --ignore-engines
+          yarn add ini@^4.1.1 --ignore-engines
+          yarn add buffer@^6.0.3 --ignore-engines
+          yarn add styled-components@^5.3.6 --ignore-engines
+          yarn add react-redux@^8.0.4 redux@^4.2.0 redux-thunk@^2.4.1 --ignore-engines
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
