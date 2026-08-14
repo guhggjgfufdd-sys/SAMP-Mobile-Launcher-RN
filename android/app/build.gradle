@@ -1,9 +1,11 @@
 apply plugin: "com.android.application"
 
 project.ext.react = [
-    enableHermes: false,
+    enableHermes: true,
     bundleInRelease: true,
     devDisabledInRelease: true,
+    jsBundleDirRelease: "$buildDir/generated/assets/react/release",
+    resourcesDirRelease: "$buildDir/generated/res/react/release"
 ]
 
 apply from: "../../node_modules/react-native/react.gradle"
