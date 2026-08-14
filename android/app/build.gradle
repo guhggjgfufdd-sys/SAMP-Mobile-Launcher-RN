@@ -1,12 +1,10 @@
 apply plugin: "com.android.application"
+apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
 apply plugin: "com.google.firebase.crashlytics"
 
-import com.android.build.OutputFile
-import org.apache.tools.ant.taskdefs.condition.Os
-
 project.ext.react = [
-    enableHermes: true,
+    enableHermes: false,
 ]
 
 apply from: "../../node_modules/react-native/react.gradle"
@@ -14,102 +12,17 @@ apply from: "../../node_modules/react-native/react.gradle"
 def enableSeparateBuildPerCPUArchitecture = false
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
-def enableHermes = project.ext.react.get("enableHermes", false);
-
-// 🟢 دعم للمعماريتين لتفادي رفض النظام والتوقف المفاجئ
-def reactNativeArchitectures() {
-    def value = project.getProperties().get("reactNativeArchitectures")
-    return value ? value.split(",") : ["armeabi-v7a", "arm64-v8a"]
-}
-
-configurations.all {
-    resolutionStrategy {
-        force 'net.lingala.zip4j:zip4j:2.11.5'
-        dependencySubstitution {
-            substitute module('com.facebook.fbjni:fbjni-java-only') using module('com.facebook.fbjni:fbjni:0.2.2')
-        }
-    }
-}
 
 android {
     ndkVersion rootProject.ext.ndkVersion
-    compileSdkVersion 34
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
-    lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
-    }
+    compileSdkVersion rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId "com.touch.mobile.dark"
-        minSdkVersion 21
-        targetSdkVersion 34  // 🟢 رفع مستهدف الأندرويد لمنع رسالة عدم التوافق
+        applicationId "com.samp.launcher"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
-        multiDexEnabled true
-        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
-        
-        ndk {
-            abiFilters "armeabi-v7a", "arm64-v8a"
-        }
-    }
-
-    packagingOptions {
-        pickFirst '**/libfbjni.so'
-        pickFirst '**/libc++_shared.so'
-        pickFirst '**/libglog.so'
-    }
-
-    if (isNewArchitectureEnabled()) {
-        externalNativeBuild {
-            cmake {
-                arguments "-DPROJECT_BUILD_DIR=$buildDir",
-                    "-DREACT_ANDROID_DIR=$rootDir/../node_modules/react-native/ReactAndroid",
-                    "-DREACT_ANDROID_BUILD_DIR=$rootDir/../node_modules/react-native/ReactAndroid/build",
-                    "-DNODE_MODULES_DIR=$rootDir/../node_modules",
-                    "-DANDROID_STL=c++_shared"
-            }
-        }
-    }
-
-    if (isNewArchitectureEnabled()) {
-        externalNativeBuild {
-            cmake {
-                path "$projectDir/src/main/jni/CMakeLists.txt"
-            }
-        }
-
-        def reactAndroidProjectDir = project(':ReactAndroid').projectDir
-        def packageReactNdkDebugLibs = tasks.register("packageReactNdkDebugLibs", Copy) {
-            dependsOn(":ReactAndroid:packageReactNdkDebugLibsForBuck")
-            from("$reactAndroidProjectDir/src/main/jni/prebuilt/lib")
-            into("$buildDir/react-ndk/exported")
-        }
-        def packageReactNdkReleaseLibs = tasks.register("packageReactNdkReleaseLibs", Copy) {
-            dependsOn(":ReactAndroid:packageReactNdkReleaseLibsForBuck")
-            from("$reactAndroidProjectDir/src/main/jni/prebuilt/lib")
-            into("$buildDir/react-ndk/exported")
-        }
-        afterEvaluate {
-            preDebugBuild.dependsOn(packageReactNdkDebugLibs)
-            preReleaseBuild.dependsOn(packageReactNdkReleaseLibs)
-
-            configureCMakeDebug.dependsOn(preReleaseBuild)
-            configureCMakeDebug.dependsOn(preDebugBuild)
-            reactNativeArchitectures().each { architecture ->
-                tasks.findByName("configureCMakeDebug[${architecture}]")?.configure {
-                    dependsOn("preDebugBuild")
-                }
-                tasks.findByName("configureCMakeRelWithDebInfo[${architecture}]")?.configure {
-                    dependsOn("preReleaseBuild")
-                }
-            }
-        }
     }
 
     splits {
@@ -117,7 +30,7 @@ android {
             reset()
             enable enableSeparateBuildPerCPUArchitecture
             universalApk false
-            include (*reactNativeArchitectures())
+            include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
         }
     }
 
@@ -129,11 +42,16 @@ android {
             keyPassword 'android'
         }
         release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
+                storeFile file(MYAPP_RELEASE_STORE_FILE)
+                storePassword MYAPP_RELEASE_STORE_PASSWORD
+                keyAlias MYAPP_RELEASE_KEY_ALIAS
+                keyPassword MYAPP_RELEASE_KEY_PASSWORD
+            } else {
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
             }
         }
     }
@@ -143,93 +61,35 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            firebaseCrashlytics {
-                nativeSymbolUploadEnabled true
-                unstrippedNativeLibsDir 'build/intermediates/merged_native_libs/release/out/lib'
-            }
-
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
 
-    applicationVariants.all { variant ->
-        variant.outputs.each { output ->
-            def versionCodes = ["armeabi-v7a": 1, "x86": 2, "arm64-v8a": 3, "x86_64": 4]
-            def abi = output.getFilter(OutputFile.ABI)
-            if (abi != null) {
-                output.versionCodeOverride =
-                        defaultConfig.versionCode * 1000 + versionCodes.get(abi)
-            }
-        }
+    packagingOptions {
+        pickFirst '**/libjsc.so'
+        pickFirst '**/libc++_shared.so'
     }
 }
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-
     implementation "com.facebook.react:react-native:+"
-    implementation 'com.facebook.fbjni:fbjni:0.2.2'
-
-    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
-    implementation "androidx.core:core-splashscreen:1.0.0"
-    implementation 'com.gitee.chinasoft_ohos:MaskedEditText:1.0.2'
-
-    implementation 'androidx.multidex:multidex:2.0.1'
-    implementation 'com.github.skydoves:colorpickerpreference:2.0.4'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'com.google.android.material:material:1.7.0'
-    implementation 'com.akexorcist:round-corner-progress-bar:2.1.2'
-    implementation 'com.tuyenmonkey:mkloader:1.4.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.1.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0'
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
 
     debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}") {
-        exclude group: 'com.facebook.fbfjni'
+        exclude group:'com.facebook.fbjni'
     }
-
     debugImplementation("com.facebook.flipper:flipper-network-plugin:${FLIPPER_VERSION}") {
-        exclude group: 'com.facebook.fbfjni'
-        exclude group: 'com.squareup.okhttp3', module: 'okhttp'
+        exclude group:'com.facebook.flipper'
+        exclude group:'com.squareup.okhttp3'
     }
-
     debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}") {
-        exclude group: 'com.facebook.fbfjni'
+        exclude group:'com.facebook.flipper'
     }
 
-    if (enableHermes) {
-        implementation("com.facebook.react:hermes-engine:+") {
-            exclude group: 'com.facebook.fbfjni'
-        }
-    } else {
-        implementation jscFlavor
-    }
-
-    implementation project(':react-native-fs')
-    implementation project(':react-native-gpu-info')
-}
-
-if (isNewArchitectureEnabled()) {
-    configurations.all {
-        resolutionStrategy.dependencySubstitution {
-            substitute(module("com.facebook.react:react-native"))
-                    .using(project(":ReactAndroid"))
-                    .because("On New Architecture we're building React Native from source")
-            substitute(module("com.facebook.react:hermes-engine"))
-                    .using(project(":ReactAndroid:hermes-engine"))
-                    .because("On New Architecture we're building Hermes from source")
-        }
-    }
-}
-
-task copyDownloadableDepsToLibs(type: Copy) {
-    from configurations.implementation
-    into 'libs'
+    implementation jscFlavor
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
-
-def isNewArchitectureEnabled() {
-    return project.hasProperty("newArchEnabled") && project.newArchEnabled == "true"
-}
