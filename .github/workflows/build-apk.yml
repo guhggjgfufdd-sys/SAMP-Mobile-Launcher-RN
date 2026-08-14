@@ -32,6 +32,33 @@ jobs:
           yarn add @gorhom/bottom-sheet
           yarn add @react-native-async-storage/async-storage
           yarn add @react-navigation/native @react-navigation/bottom-tabs
+          yarn add react-native-bootsplash
+          yarn add react-native-gesture-handler
+          yarn add react-native-safe-area-context
+          yarn add react-native-screens
+          yarn add react-native-reanimated
+          yarn add react-native-vector-icons
+          yarn add react-native-linear-gradient
+          yarn add react-native-fs
+          yarn add react-native-device-info
+          yarn add react-native-fast-image
+          yarn add react-native-progress
+          yarn add react-native-shadow-2
+          yarn add react-native-size-matters
+          yarn add react-native-snowflakes
+          yarn add react-native-svg
+          yarn add react-native-svg-icon
+          yarn add react-native-switch
+          yarn add lottie-react-native
+          yarn add react-native-animated-nav-tab-bar
+          yarn add react-native-awesome-alerts
+          yarn add react-native-reanimated-carousel
+          yarn add react-native-quick-base64
+          yarn add axios
+          yarn add ini
+          yarn add buffer
+          yarn add styled-components
+          yarn add react-redux redux redux-thunk
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
