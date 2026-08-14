@@ -1,6 +1,4 @@
 apply plugin: "com.android.application"
-apply plugin: "com.google.gms.google-services"
-apply plugin: "com.google.firebase.crashlytics"
 
 project.ext.react = [
     enableHermes: false,
@@ -78,7 +76,7 @@ android {
     }
 }
 
-// حل مشكلة StackOverflowError بإجبار Gradle على استخدام zip4j المستقرة
+// إجبار نسخة zip4j المستقرة
 configurations.all {
     resolutionStrategy {
         force 'net.lingala.zip4j:zip4j:2.9.0'
