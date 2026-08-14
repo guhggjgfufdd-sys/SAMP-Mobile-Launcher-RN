@@ -11,10 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 11
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '11'
           distribution: 'temurin'
 
       - name: Setup Node.js
@@ -33,11 +33,11 @@ jobs:
 
       - name: Build Release APK
         env:
-          JAVA_TOOL_OPTIONS: "-Xss16m -Xmx4096m"
-          NODE_OPTIONS: "--max-old-space-size=4096"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx4096m -Xss10m -XX:MaxMetaspaceSize=1024m'"
+          JAVA_TOOL_OPTIONS: "-Xss10m -Xmx4096m"
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
