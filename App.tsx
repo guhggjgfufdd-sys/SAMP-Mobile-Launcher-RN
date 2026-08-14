@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BackHandler } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationRouter } from './src/routers/navigation-router';
 
 export const App = () => {
@@ -16,5 +17,9 @@ export const App = () => {
     return () => backHandler.remove();
   }, []);
 
-  return <NavigationRouter />;
+  return (
+    <SafeAreaProvider>
+      <NavigationRouter />
+    </SafeAreaProvider>
+  );
 };
