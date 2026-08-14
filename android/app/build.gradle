@@ -1,11 +1,10 @@
 apply plugin: "com.android.application"
+apply plugin: "com.facebook.react"
 
 project.ext.react = [
     enableHermes: false,
     bundleInRelease: false,
 ]
-
-apply from: "../../node_modules/react-native/react.gradle"
 
 def enableSeparateBuildPerCPUArchitecture = false
 def enableProguardInReleaseBuilds = false
