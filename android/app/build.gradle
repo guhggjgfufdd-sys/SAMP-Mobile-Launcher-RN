@@ -3,6 +3,7 @@ apply plugin: "com.facebook.react"
 
 project.ext.react = [
     enableHermes: false,
+    hermesEnabled: false,
     bundleInRelease: false,
 ]
 
