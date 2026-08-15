@@ -12,17 +12,28 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git
 
+      - name: Save original files
+        run: |
+          cp SAMP-Mobile-Launcher-RN/package.json /tmp/original-package.json
+          cp SAMP-Mobile-Launcher-RN/android/settings.gradle /tmp/original-settings.gradle
+          cp SAMP-Mobile-Launcher-RN/android/build.gradle /tmp/original-build.gradle
+          cp SAMP-Mobile-Launcher-RN/android/app/build.gradle /tmp/original-app-build.gradle
+
       - name: Checkout YOUR custom files
         uses: actions/checkout@v4
         with:
           path: fork
 
-      - name: Merge your custom files
+      - name: Merge ALL your custom files
         run: |
-          cp -r fork/src/* SAMP-Mobile-Launcher-RN/src/ 2>/dev/null || true
-          cp -r fork/assets/* SAMP-Mobile-Launcher-RN/assets/ 2>/dev/null || true
-          cp -r fork/distribution/* SAMP-Mobile-Launcher-RN/distribution/ 2>/dev/null || true
-          cp fork/.env SAMP-Mobile-Launcher-RN/.env 2>/dev/null || true
+          # ننسخ كل شي من فوركك (icon, name, src, assets, .env, app.json, إلخ)
+          cp -r fork/* SAMP-Mobile-Launcher-RN/ 2>/dev/null || true
+          cp -r fork/.[!.]* SAMP-Mobile-Launcher-RN/ 2>/dev/null || true
+          # نرجع الملفات التالفة للأصلية (اللي تسبب مشاكل Gradle)
+          cp /tmp/original-package.json SAMP-Mobile-Launcher-RN/package.json
+          cp /tmp/original-settings.gradle SAMP-Mobile-Launcher-RN/android/settings.gradle
+          cp /tmp/original-build.gradle SAMP-Mobile-Launcher-RN/android/build.gradle
+          cp /tmp/original-app-build.gradle SAMP-Mobile-Launcher-RN/android/app/build.gradle
 
       - name: Setup Node.js 16
         uses: actions/setup-node@v4
@@ -40,10 +51,9 @@ jobs:
           cd SAMP-Mobile-Launcher-RN
           npm install --legacy-peer-deps @react-navigation/bottom-tabs@^6 @gorhom/bottom-sheet@^4 @react-native-async-storage/async-storage@^1 react-native-zip-archive@5.0.3
 
-      - name: Fix Android build (zip4j + memory)
+      - name: Fix Android build memory
         run: |
           cd SAMP-Mobile-Launcher-RN
-          # زيادة ذاكرة Gradle
           sed -i 's/org.gradle.jvmargs=-Xmx2048m/org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m/' android/gradle.properties || echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
 
       - name: Make gradlew executable
