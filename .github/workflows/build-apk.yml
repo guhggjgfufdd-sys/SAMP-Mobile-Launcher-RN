@@ -24,7 +24,7 @@ jobs:
           cp -r fork/distribution/* SAMP-Mobile-Launcher-RN/distribution/ 2>/dev/null || true
           cp fork/.env SAMP-Mobile-Launcher-RN/.env 2>/dev/null || true
 
-      - name: Setup Node.js 16 (compatible with RN 0.70)
+      - name: Setup Node.js 16
         uses: actions/setup-node@v4
         with:
           node-version: '16'
@@ -34,6 +34,11 @@ jobs:
           cd SAMP-Mobile-Launcher-RN
           npm install -g yarn
           yarn install
+
+      - name: Install missing packages for your src
+        run: |
+          cd SAMP-Mobile-Launcher-RN
+          npm install --legacy-peer-deps @react-navigation/bottom-tabs@^6 @gorhom/bottom-sheet@^4 @react-native-async-storage/async-storage@^1 react-native-zip-archive@^6
 
       - name: Make gradlew executable
         run: chmod +x SAMP-Mobile-Launcher-RN/android/gradlew
