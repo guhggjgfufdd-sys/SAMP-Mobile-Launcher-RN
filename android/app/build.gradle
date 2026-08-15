@@ -30,13 +30,14 @@ android {
     }
     
     splits {
-        abi {
-            reset()
-            enable enableSeparateBuildPerCPUArchitecture
-            universalApk false
-            include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
-        }
+    abi {
+        reset()
+        enable enableSeparateBuildPerCPUArchitecture
+        universalApk false
+        include "armeabi-v7a"  // ← خلّه بس هذا
     }
+}
+
     
     signingConfigs {
         debug {
