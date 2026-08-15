@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules } from 'react-native';
 
 const { GtaSetupModule } = NativeModules;
 
@@ -8,12 +8,9 @@ interface ServerData {
   playerName: string;
 }
 
-export const launchGame = (serverData: ServerData): void => {
-  if (Platform.OS === 'android') {
-    GtaSetupModule.launchGame(serverData);
-  } else {
-    console.warn('launchGame is only supported on Android');
-  }
+export default {
+  startGame: () => GtaSetupModule.startGame(),
+  
+  // ← الدالة الجديدة
+  launchGame: (data: ServerData) => GtaSetupModule.launchGame(data),
 };
-
-export default GtaSetupModule;
