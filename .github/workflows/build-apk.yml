@@ -23,7 +23,46 @@ jobs:
           cp -r fork/assets/* original/assets/ 2>/dev/null || true
           cp -r fork/distribution/* original/distribution/ 2>/dev/null || true
           cp fork/.env original/.env 2>/dev/null || true
-          cp fork/app.json original/app.json 2>/dev/null || true
+
+      - name: Fix package.json for production build
+        run: |
+          cd original
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.dependencies = pkg.dependencies || {};
+            pkg.devDependencies = pkg.devDependencies || {};
+            
+            // Move packages from devDependencies to dependencies
+            const moveToDeps = [
+              '@gorhom/bottom-sheet', '@react-native-async-storage/async-storage',
+              '@react-navigation/native', '@react-navigation/native-stack',
+              '@notifee/react-native', '@react-native-community/blur',
+              '@react-native-community/masked-view', '@react-native-firebase/app',
+              '@react-native-firebase/crashlytics', '@react-native-firebase/messaging',
+              '@sayem314/react-native-keep-awake', '@sharcoux/slider',
+              '@dominicvonk/react-native-apk-installer'
+            ];
+            
+            for (const name of moveToDeps) {
+              if (pkg.devDependencies[name]) {
+                pkg.dependencies[name] = pkg.devDependencies[name];
+                delete pkg.devDependencies[name];
+              }
+            }
+            
+            // Add missing packages that user's src needs
+            const addMissing = {
+              '@react-navigation/bottom-tabs': '^6.4.0',
+              'react-native-zip-archive': '^6.0.0'
+            };
+            
+            for (const [name, version] of Object.entries(addMissing)) {
+              if (!pkg.dependencies[name]) pkg.dependencies[name] = version;
+            }
+            
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -36,14 +75,6 @@ jobs:
           npm install -g yarn
           rm -rf node_modules yarn.lock
           yarn install --ignore-engines
-
-      - name: Install ONLY missing packages
-        run: |
-          cd original
-          yarn add @react-navigation/bottom-tabs@^6.4.0 --ignore-engines
-          yarn add @gorhom/bottom-sheet@^4 --ignore-engines
-          yarn add @react-native-async-storage/async-storage@^1.17.10 --ignore-engines
-          yarn add react-native-zip-archive@^6.0.0 --ignore-engines
 
       - name: Make gradlew executable
         run: chmod +x original/android/gradlew
