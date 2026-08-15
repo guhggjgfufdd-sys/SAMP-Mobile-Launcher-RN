@@ -8,18 +8,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout YOUR fork
-        uses: actions/checkout@v4
-
-      - name: Fix broken files from original repo
+      - name: Clone original working repo
         run: |
-          git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git /tmp/original
-          cp /tmp/original/package.json package.json
-          cp /tmp/original/metro.config.js metro.config.js
-          cp /tmp/original/babel.config.js babel.config.js
-          cp /tmp/original/android/settings.gradle android/settings.gradle
-          cp /tmp/original/android/build.gradle android/build.gradle
-          cp /tmp/original/android/app/build.gradle android/app/build.gradle
+          git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git original
+
+      - name: Checkout YOUR custom files
+        uses: actions/checkout@v4
+        with:
+          path: fork
+
+      - name: Merge your custom files into original
+        run: |
+          cp -r fork/src/* original/src/ 2>/dev/null || true
+          cp -r fork/assets/* original/assets/ 2>/dev/null || true
+          cp -r fork/distribution/* original/distribution/ 2>/dev/null || true
+          cp fork/.env original/.env 2>/dev/null || true
+          cp fork/app.json original/app.json 2>/dev/null || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,18 +32,16 @@ jobs:
 
       - name: Install dependencies
         run: |
+          cd original
           npm install -g yarn
-          rm -rf node_modules yarn.lock
-          yarn install --ignore-engines
+          yarn install
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      - name: Clean previous builds
-        run: cd android && ./gradlew clean
+        run: chmod +x original/android/gradlew
 
       - name: Build JS Bundle manually
         run: |
+          cd original
           mkdir -p android/app/src/main/assets
           npx react-native bundle \
             --platform android \
@@ -48,10 +50,10 @@ jobs:
             --bundle-output android/app/src/main/assets/index.android.bundle
 
       - name: Build Release APK
-        run: cd android && ./gradlew assembleRelease
+        run: cd original/android && ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: original/android/app/build/outputs/apk/release/*.apk
