@@ -13,22 +13,22 @@ def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
-    compileSdkVersion 34
-
+    compileSdkVersion 33    // ← غيّر من 34 إلى 33 (أو خلّه 33)
+    
     defaultConfig {
         applicationId "com.touch.mobile.dark"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 33   // ← غيّر من 34 إلى 33 (أو خلّه 33)
         versionCode 1
         versionName "1.0.0"
         multiDexEnabled true
     }
-
+    
     lintOptions {
         checkReleaseBuilds false
         abortOnError false
     }
-
+    
     splits {
         abi {
             reset()
@@ -37,7 +37,7 @@ android {
             include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
         }
     }
-
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -59,7 +59,7 @@ android {
             }
         }
     }
-
+    
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -71,12 +71,12 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
-
+    
     packagingOptions {
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
     }
-
+    
     configurations.all {
         resolutionStrategy {
             force 'net.lingala.zip4j:zip4j:2.9.0'
