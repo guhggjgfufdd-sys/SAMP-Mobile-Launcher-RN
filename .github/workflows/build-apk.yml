@@ -13,12 +13,13 @@ jobs:
 
       - name: Fix broken files from original repo
         run: |
-          curl -o package.json https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/package.json
-          curl -o metro.config.js https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/metro.config.js
-          curl -o babel.config.js https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/babel.config.js
-          curl -o android/settings.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/settings.gradle
-          curl -o android/build.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/build.gradle
-          curl -o android/app/build.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/app/build.gradle
+          git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git /tmp/original
+          cp /tmp/original/package.json package.json
+          cp /tmp/original/metro.config.js metro.config.js
+          cp /tmp/original/babel.config.js babel.config.js
+          cp /tmp/original/android/settings.gradle android/settings.gradle
+          cp /tmp/original/android/build.gradle android/build.gradle
+          cp /tmp/original/android/app/build.gradle android/app/build.gradle
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
