@@ -2,7 +2,7 @@ export const DistributionService = {
   async get() {
     return {
       cdnLauncher: '',
-      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gta.sa.zip',
+      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip',
       cacheMode: [],
       rss: '',
       versionHash: '1.0.0',
