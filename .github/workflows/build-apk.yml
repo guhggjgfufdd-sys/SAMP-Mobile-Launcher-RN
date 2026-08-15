@@ -24,16 +24,16 @@ jobs:
           cp -r fork/distribution/* original/distribution/ 2>/dev/null || true
           cp fork/.env original/.env 2>/dev/null || true
 
-      - name: Fix package.json for production build
+      - name: Fix package.json
         run: |
           cd original
+          cp package.json package.json.fixed
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
             pkg.dependencies = pkg.dependencies || {};
             pkg.devDependencies = pkg.devDependencies || {};
             
-            // Move packages from devDependencies to dependencies
             const moveToDeps = [
               '@gorhom/bottom-sheet', '@react-native-async-storage/async-storage',
               '@react-navigation/native', '@react-navigation/native-stack',
@@ -51,7 +51,6 @@ jobs:
               }
             }
             
-            // Add missing packages that user's src needs
             const addMissing = {
               '@react-navigation/bottom-tabs': '^6.4.0',
               'react-native-zip-archive': '^6.0.0'
@@ -75,6 +74,7 @@ jobs:
           npm install -g yarn
           rm -rf node_modules yarn.lock
           yarn install --ignore-engines
+          cp package.json.fixed package.json  # ارجع package.json الأصلي السليم!
 
       - name: Make gradlew executable
         run: chmod +x original/android/gradlew
