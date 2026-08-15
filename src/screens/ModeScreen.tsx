@@ -5,7 +5,6 @@ import {
   View,
   TouchableOpacity,
   StyleSheet,
-  Image,
   TextInput,
   Alert,
 } from 'react-native';
@@ -13,7 +12,6 @@ import { useAppDispatch } from '../hooks/useAppDispatch';
 import { fetchModeSetting, fetchUserNameSetting } from '../thunks/settingsThunks';
 import { setUserNameSetting } from '../actions/settingsActions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Images from '../../assets/images';
 
 type ScreenType = NativeStackScreenProps<any>;
 
@@ -36,7 +34,11 @@ export const ModeScreen = React.memo(({ navigation }: ScreenType) => {
 
   return (
     <View style={styles.container}>
-      <Image source={Images.logo} style={styles.logo} resizeMode="contain" />
+      {/* الشعار بدون صورة */}
+      <View style={styles.logoPlaceholder}>
+        <Text style={styles.logoText}>SAMP</Text>
+      </View>
+
       <Text style={styles.title}>Las Venturas RP</Text>
       <Text style={styles.subtitle}>SAMP Mobile</Text>
 
@@ -60,7 +62,8 @@ export const ModeScreen = React.memo(({ navigation }: ScreenType) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  logo: { width: 120, height: 120, marginBottom: 20 },
+  logoPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  logoText: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   subtitle: { color: '#888', fontSize: 16, marginBottom: 40 },
   label: { color: '#fff', alignSelf: 'flex-end', marginBottom: 8, fontSize: 16, width: '100%' },
