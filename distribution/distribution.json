@@ -11,7 +11,7 @@
     {
       "id": 1,
       "show": true,
-      "version": "0.3.7",
+      "version": "0.3.DL",
       "icon": "",
       "events": [],
       "slot": 100,
@@ -19,7 +19,7 @@
       "name": "Las Venturas RP",
       "description": "Main Server",
       "address": "142.132.203.47:21299",
-      "sampVersion": "0.3.7"
+      "sampVersion": "0.3.DL"
     }
   ],
   "launcher": {
