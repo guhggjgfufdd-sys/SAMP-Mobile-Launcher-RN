@@ -2,7 +2,7 @@ export const DistributionService = {
   async get() {
     return {
       cdnLauncher: '',
-      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip',
+      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gta.sa.zip',
       cacheMode: [],
       rss: '',
       versionHash: '1.0.0',
@@ -12,7 +12,7 @@ export const DistributionService = {
         {
           id: 1,
           show: true,
-          version: '0.3.7',
+          version: '0.3.DL',          // ← لازم يطابق distribution.json
           icon: '',
           events: [],
           slot: 100,
@@ -20,13 +20,13 @@ export const DistributionService = {
           name: 'Las Venturas RP',
           description: 'Main Server',
           address: '142.132.203.47:21299',
-          sampVersion: '0.3.7',
+          sampVersion: '0.3.DL',      // ← لازم يطابق distribution.json
         },
       ],
       launcher: {
         appVersion: '1.0.0',
         name: 'launcher.apk',
-        hash: 'd41d8cd98f00b204e9800998ecf8427e',
+        hash: '',
         bytes: 1,
         size: '1',
       },
@@ -72,4 +72,5 @@ export type ServerType = {
   name: string;
   description: string;
   address: string;
-  sampV
+  sampVersion: string;
+};
