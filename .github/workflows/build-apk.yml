@@ -34,7 +34,13 @@ jobs:
         run: |
           cd original
           npm install -g yarn
-          yarn install
+          rm -rf node_modules yarn.lock
+          yarn install --ignore-engines
+
+      - name: Install extra packages for your custom src
+        run: |
+          cd original
+          yarn add @react-navigation/bottom-tabs @gorhom/bottom-sheet @react-native-async-storage/async-storage @react-navigation/native-stack react-native-bootsplash react-native-gesture-handler react-native-safe-area-context react-native-screens react-native-reanimated react-native-vector-icons react-native-linear-gradient react-native-fs react-native-device-info react-native-fast-image react-native-progress react-native-shadow-2 react-native-size-matters react-native-snowflakes react-native-svg react-native-svg-icon react-native-switch lottie-react-native react-native-animated-nav-tab-bar react-native-awesome-alerts react-native-reanimated-carousel react-native-quick-base64 react-native-zip-archive axios ini buffer styled-components react-redux redux redux-thunk @notifee/react-native @react-native-community/blur @react-native-community/masked-view @react-native-firebase/app @react-native-firebase/crashlytics @react-native-firebase/messaging @sayem314/react-native-keep-awake @sharcoux/slider @dominicvonk/react-native-apk-installer --ignore-engines
 
       - name: Make gradlew executable
         run: chmod +x original/android/gradlew
