@@ -38,10 +38,19 @@ jobs:
       - name: Install missing packages for your src
         run: |
           cd SAMP-Mobile-Launcher-RN
-          npm install --legacy-peer-deps @react-navigation/bottom-tabs@^6 @gorhom/bottom-sheet@^4 @react-native-async-storage/async-storage@^1 react-native-zip-archive@^6
+          npm install --legacy-peer-deps @react-navigation/bottom-tabs@^6 @gorhom/bottom-sheet@^4 @react-native-async-storage/async-storage@^1 react-native-zip-archive@5.0.3
+
+      - name: Fix Android build (zip4j + memory)
+        run: |
+          cd SAMP-Mobile-Launcher-RN
+          # زيادة ذاكرة Gradle
+          sed -i 's/org.gradle.jvmargs=-Xmx2048m/org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m/' android/gradle.properties || echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
 
       - name: Make gradlew executable
         run: chmod +x SAMP-Mobile-Launcher-RN/android/gradlew
+
+      - name: Clean build
+        run: cd SAMP-Mobile-Launcher-RN/android && ./gradlew clean
 
       - name: Build JS Bundle manually
         run: |
