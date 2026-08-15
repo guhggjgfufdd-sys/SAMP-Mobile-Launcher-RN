@@ -2,8 +2,8 @@ export const DistributionService = {
   async get() {
     return {
       cdnLauncher: '',
-      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip',
-      cache: [],
+      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gta.sa.zip',
+      cacheMode: [],
       rss: '',
       versionHash: '1.0.0',
       packageName: 'com.touch.mobile.dark',
@@ -26,9 +26,9 @@ export const DistributionService = {
       launcher: {
         appVersion: '1.0.0',
         name: 'launcher.apk',
-        hash: '',
-        bytes: 0,
-        size: '0',
+        hash: 'd41d8cd98f00b204e9800998ecf8427e',
+        bytes: 1,
+        size: '1',
       },
       filesContinue: [],
     };
@@ -38,7 +38,7 @@ export const DistributionService = {
 export type DistributionResponse = {
   cdnLauncher: string;
   cdnCache: string;
-  cache: any[];
+  cacheMode: any[];
   rss: string;
   versionHash: string;
   packageName: string;
@@ -72,5 +72,4 @@ export type ServerType = {
   name: string;
   description: string;
   address: string;
-  sampVersion: string;
-};
+  sampV
