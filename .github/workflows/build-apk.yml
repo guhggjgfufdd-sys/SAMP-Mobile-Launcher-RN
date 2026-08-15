@@ -10,78 +10,37 @@ jobs:
     steps:
       - name: Clone original working repo
         run: |
-          git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git original
+          git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git
 
       - name: Checkout YOUR custom files
         uses: actions/checkout@v4
         with:
           path: fork
 
-      - name: Merge your custom files into original
+      - name: Merge your custom files
         run: |
-          cp -r fork/src/* original/src/ 2>/dev/null || true
-          cp -r fork/assets/* original/assets/ 2>/dev/null || true
-          cp -r fork/distribution/* original/distribution/ 2>/dev/null || true
-          cp fork/.env original/.env 2>/dev/null || true
+          cp -r fork/src/* SAMP-Mobile-Launcher-RN/src/ 2>/dev/null || true
+          cp -r fork/assets/* SAMP-Mobile-Launcher-RN/assets/ 2>/dev/null || true
+          cp -r fork/distribution/* SAMP-Mobile-Launcher-RN/distribution/ 2>/dev/null || true
+          cp fork/.env SAMP-Mobile-Launcher-RN/.env 2>/dev/null || true
 
-      - name: Fix package.json
-        run: |
-          cd original
-          cp package.json package.json.fixed
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.dependencies = pkg.dependencies || {};
-            pkg.devDependencies = pkg.devDependencies || {};
-            
-            const moveToDeps = [
-              '@gorhom/bottom-sheet', '@react-native-async-storage/async-storage',
-              '@react-navigation/native', '@react-navigation/native-stack',
-              '@notifee/react-native', '@react-native-community/blur',
-              '@react-native-community/masked-view', '@react-native-firebase/app',
-              '@react-native-firebase/crashlytics', '@react-native-firebase/messaging',
-              '@sayem314/react-native-keep-awake', '@sharcoux/slider',
-              '@dominicvonk/react-native-apk-installer'
-            ];
-            
-            for (const name of moveToDeps) {
-              if (pkg.devDependencies[name]) {
-                pkg.dependencies[name] = pkg.devDependencies[name];
-                delete pkg.devDependencies[name];
-              }
-            }
-            
-            const addMissing = {
-              '@react-navigation/bottom-tabs': '^6.4.0',
-              'react-native-zip-archive': '^6.0.0'
-            };
-            
-            for (const [name, version] of Object.entries(addMissing)) {
-              if (!pkg.dependencies[name]) pkg.dependencies[name] = version;
-            }
-            
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          "
-
-      - name: Setup Node.js
+      - name: Setup Node.js 16 (compatible with RN 0.70)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '16'
 
       - name: Install dependencies
         run: |
-          cd original
+          cd SAMP-Mobile-Launcher-RN
           npm install -g yarn
-          rm -rf node_modules yarn.lock
-          yarn install --ignore-engines
-          cp package.json.fixed package.json  # ارجع package.json الأصلي السليم!
+          yarn install
 
       - name: Make gradlew executable
-        run: chmod +x original/android/gradlew
+        run: chmod +x SAMP-Mobile-Launcher-RN/android/gradlew
 
       - name: Build JS Bundle manually
         run: |
-          cd original
+          cd SAMP-Mobile-Launcher-RN
           mkdir -p android/app/src/main/assets
           npx react-native bundle \
             --platform android \
@@ -90,10 +49,10 @@ jobs:
             --bundle-output android/app/src/main/assets/index.android.bundle
 
       - name: Build Release APK
-        run: cd original/android && ./gradlew assembleRelease
+        run: cd SAMP-Mobile-Launcher-RN/android && ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: original/android/app/build/outputs/apk/release/*.apk
+          path: SAMP-Mobile-Launcher-RN/android/app/build/outputs/apk/release/*.apk
