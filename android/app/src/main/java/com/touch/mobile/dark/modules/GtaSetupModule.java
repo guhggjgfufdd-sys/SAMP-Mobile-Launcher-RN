@@ -15,7 +15,11 @@ import com.facebook.react.bridge.ReadableMap;
 import com.touch.mobile.dark.MainGTA;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
 public class GtaSetupModule extends ReactContextBaseJavaModule {
@@ -32,7 +36,6 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
         return "GtaSetupModule";
     }
 
-    // الدالة الأصلية (نحتفظ فيها)
     @ReactMethod
     public void startGame(Promise promise) {
         try {
@@ -50,7 +53,6 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
         }
     }
 
-    // الدالة الجديدة (تكتب إعدادات السيرفر ثم تفتح MainGTA)
     @ReactMethod
     public void launchGame(ReadableMap serverData, Promise promise) {
         try {
@@ -62,10 +64,13 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            // 1. اكتب إعدادات السيرفر
+            // ← 1. انسخ ملفات الكاش تلقائياً من Download/SAMP
+            copyCacheFiles();
+
+            // ← 2. اكتب إعدادات السيرفر
             writeSampConfig(serverAddress, playerName);
 
-            // 2. افتح MainGTA
+            // ← 3. افتح اللعبة
             Activity activity = getCurrentActivity();
             Intent intent = new Intent(getReactApplicationContext(), MainGTA.class);
             if (activity != null) {
@@ -83,13 +88,71 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
         }
     }
 
+    // ← دالة جديدة: نسخ ملفات الكاش تلقائياً
+    private void copyCacheFiles() {
+        try {
+            File sourceDir = new File(Environment.getExternalStorageDirectory(), "Download/SAMP");
+            File targetDir = getReactApplicationContext().getExternalFilesDir(null);
+
+            if (!sourceDir.exists()) {
+                Log.w(TAG, "Cache not found in: " + sourceDir.getAbsolutePath());
+                return;
+            }
+
+            if (targetDir == null) {
+                Log.e(TAG, "Target dir is null!");
+                return;
+            }
+
+            // انسخ فقط إذا الملفات مو موجودة في الهدف (أول مرة فقط)
+            File checkFile = new File(targetDir, "stream.ini");
+            if (!checkFile.exists()) {
+                Log.d(TAG, "Copying cache files...");
+                copyDirectory(sourceDir, targetDir);
+                Log.d(TAG, "Cache copied to: " + targetDir.getAbsolutePath());
+            } else {
+                Log.d(TAG, "Cache already exists, skipping copy");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error copying cache: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void copyDirectory(File source, File target) throws IOException {
+        if (source.isDirectory()) {
+            if (!target.exists()) {
+                target.mkdirs();
+            }
+            String[] children = source.list();
+            if (children != null) {
+                for (String child : children) {
+                    copyDirectory(new File(source, child), new File(target, child));
+                }
+            }
+        } else {
+            copyFile(source, target);
+        }
+    }
+
+    private void copyFile(File source, File target) throws IOException {
+        try (InputStream in = new FileInputStream(source);
+             OutputStream out = new FileOutputStream(target)) {
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+        }
+    }
+
     private void writeSampConfig(String serverAddress, String playerName) {
         try {
-            File gtaDir = new File(Environment.getExternalStorageDirectory(),
-                    "Android/data/com.rockstargames.gtasa/files");
-
-            if (!gtaDir.exists()) {
-                gtaDir.mkdirs();
+            File gtaDir = getReactApplicationContext().getExternalFilesDir(null);
+            if (gtaDir == null) {
+                Log.e(TAG, "External files dir is null!");
+                return;
             }
 
             File sampDir = new File(gtaDir, "SAMP");
@@ -118,6 +181,7 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
 
         } catch (Exception e) {
             Log.e(TAG, "Error writing config: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
