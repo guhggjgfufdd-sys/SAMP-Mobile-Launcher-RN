@@ -22,8 +22,6 @@ android {
         versionCode 1
         versionName "1.0.0"
         multiDexEnabled true
-        
-        // ✅ دعم 32-bit و 64-bit (يمنع الشاشة السوداء في الأجهزة الحديثة)
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
         }
@@ -39,7 +37,7 @@ android {
             reset()
             enable enableSeparateBuildPerCPUArchitecture
             universalApk false
-            include "armeabi-v7a", "arm64-v8a"  // ✅ أضفنا arm64-v8a
+            include "armeabi-v7a", "arm64-v8a"
         }
     }
 
