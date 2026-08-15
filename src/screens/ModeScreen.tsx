@@ -12,7 +12,8 @@ import {
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { fetchModeSetting, fetchUserNameSetting } from '../thunks/settingsThunks';
 import { setUserNameSetting } from '../actions/settingsActions';
-import * as Images from './../assets/images';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Images from '../../assets/images';
 
 type ScreenType = NativeStackScreenProps<any>;
 
@@ -20,62 +21,54 @@ export const ModeScreen = React.memo(({ navigation }: ScreenType) => {
   const dispatch = useAppDispatch();
   const [nickname, setNickname] = useState('');
 
-  const onConnect = useCallback(() => {
+  const onConnect = useCallback(async () => {
     if (!nickname.trim()) {
       Alert.alert('تنبيه', 'اكتب اسمك أولاً!');
       return;
     }
-    
-    // حفظ الاسم
-    dispatch(setUserNameSetting({ userName: nickname }));
-    dispatch(fetchUserNameSetting(nickname));
-    
-    // تشغيل الخريطة العادية (غيّر لـ 2 إذا تبي ثلجية)
+
+    // ✅ حفظ الاسم في AsyncStorage عشان يظهر في الإعدادات
+    await AsyncStorage.setItem('@samp_nickname', nickname.trim());
+
+    // حفظ الاسم في Redux
+    dispatch(setUserNameSetting({ userName: nickname.trim() }));
+    dispatch(fetchUserNameSetting(nickname.trim()));
+
+    // تشغيل الخريطة العادية
     dispatch(fetchModeSetting(1));
-    
-    // الانتقال للعبة
+
+    // ✅ الانتقال للعبة مباشرة
     navigation.replace('Initiation');
   }, [nickname, dispatch, navigation]);
-
-  const onSettings = useCallback(() => {
-    navigation.navigate('Settings');
-  }, [navigation]);
 
   return (
     <View style={styles.container}>
       {/* الشعار */}
-      <Image 
-        source={Images.logo} 
-        style={styles.logo} 
+      <Image
+        source={Images.logo}
+        style={styles.logo}
         resizeMode="contain"
       />
-      
+
       {/* اسم السيرفر */}
       <Text style={styles.title}>Las Venturas RP</Text>
       <Text style={styles.subtitle}>SAMP Mobile</Text>
 
       {/* حقل الاسم */}
-      <View style={styles.inputBox}>
-        <Text style={styles.label}>👤 اسم اللاعب</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="مثال: Ahmed_Rp"
-          placeholderTextColor="#555"
-          value={nickname}
-          onChangeText={setNickname}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
+      <Text style={styles.label}>اسم اللاعب</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="مثال: Don_Corleone"
+        placeholderTextColor="#666"
+        value={nickname}
+        onChangeText={setNickname}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
-      {/* زر الدخول */}
-      <TouchableOpacity style={styles.playBtn} onPress={onConnect}>
-        <Text style={styles.playText}>🎮  دخول السيرفر</Text>
-      </TouchableOpacity>
-
-      {/* زر الإعدادات */}
-      <TouchableOpacity style={styles.settingsBtn} onPress={onSettings}>
-        <Text style={styles.settingsText}>⚙️  الإعدادات</Text>
+      {/* زر حفظ + دخول */}
+      <TouchableOpacity style={styles.connectBtn} onPress={onConnect}>
+        <Text style={styles.connectText}>حفظ الاسم والدخول</Text>
       </TouchableOpacity>
     </View>
   );
@@ -84,71 +77,53 @@ export const ModeScreen = React.memo(({ navigation }: ScreenType) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a1a',
+    backgroundColor: '#1a1a2e',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 25,
+    padding: 20,
   },
   logo: {
-    width: 130,
-    height: 130,
+    width: 120,
+    height: 120,
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 5,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   subtitle: {
-    fontSize: 14,
     color: '#888',
-    marginBottom: 35,
-  },
-  inputBox: {
-    width: '100%',
-    marginBottom: 20,
+    fontSize: 16,
+    marginBottom: 40,
   },
   label: {
     color: '#fff',
-    fontSize: 14,
+    alignSelf: 'flex-end',
     marginBottom: 8,
-    textAlign: 'left',
+    fontSize: 16,
   },
   input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#16162a',
-    borderRadius: 12,
-    paddingHorizontal: 15,
+    backgroundColor: '#16213e',
     color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#2a2a4a',
-  },
-  playBtn: {
     width: '100%',
-    backgroundColor: '#e94560',
-    paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
+    padding: 15,
+    fontSize: 16,
+    textAlign: 'right',
+    marginBottom: 30,
   },
-  playText: {
+  connectBtn: {
+    backgroundColor: '#4A90D9',
+    paddingVertical: 15,
+    paddingHorizontal: 50,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  connectText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  settingsBtn: {
-    width: '100%',
-    backgroundColor: '#0f3460',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  settingsText: {
-    color: '#fff',
-    fontSize: 16,
     fontWeight: 'bold',
   },
 });
