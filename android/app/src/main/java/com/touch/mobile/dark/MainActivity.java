@@ -11,9 +11,7 @@ public class MainActivity extends ReactActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    // ✅ يمنع الشاشة السوداء ويحافظ على اللعبة شغالة
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-    
     super.onCreate(savedInstanceState);
   }
 
