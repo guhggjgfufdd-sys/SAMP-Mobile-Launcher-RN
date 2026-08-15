@@ -41,14 +41,18 @@ export const SheetServerComponent = React.memo(
     const { dismissAll } = useBottomSheetModal();
 
     const onPressPlayHandler = useCallback(async () => {
-      if (userName.length < 1) {
-        dispatch(setAlertUserName(true));
-      } else {
-        await GtaSetupModule.startGame();
-      }
-
-      dismissAll();
-    }, [userName]);
+    if (userName.length < 1) {
+      dispatch(setAlertUserName(true));
+    } else {
+      // ← تمرير بيانات السيرفر
+      await GtaSetupModule.launchGame({
+        address: server?.address || '',
+        name: server?.name || '',
+        playerName: userName,
+      });
+    }
+    dismissAll();
+}, [userName, server]);
 
     return (
       <DetachedContent
