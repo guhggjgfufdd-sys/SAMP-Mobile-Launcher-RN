@@ -19,7 +19,7 @@ export const DistributionService = {
           bonus: false,
           name: 'Las Venturas RP',
           description: 'Main Server',
-          address: '142.132.203.47:2125',
+          address: '142.132.203.47:21299',
           sampVersion: '0.3.7',
         },
       ],
