@@ -8,39 +8,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Clone original working repo
+        run: git clone --depth 1 https://github.com/penteleichuk/SAMP-Mobile-Launcher-RN.git
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Restore original project files
-        run: |
-          curl -o package.json https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/package.json
-          curl -o metro.config.js https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/metro.config.js
-          curl -o babel.config.js https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/babel.config.js
-          mkdir -p android
-          curl -o android/settings.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/settings.gradle
-          curl -o android/build.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/build.gradle
-          mkdir -p android/app
-          curl -o android/app/build.gradle https://raw.githubusercontent.com/penteleichuk/SAMP-Mobile-Launcher-RN/main/android/app/build.gradle
-
       - name: Install dependencies
         run: |
+          cd SAMP-Mobile-Launcher-RN
           npm install -g yarn
-          rm -rf node_modules yarn.lock
-          yarn install --ignore-engines
+          yarn install
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      - name: Clean previous builds
-        run: cd android && ./gradlew clean
+        run: chmod +x SAMP-Mobile-Launcher-RN/android/gradlew
 
       - name: Build JS Bundle manually
         run: |
+          cd SAMP-Mobile-Launcher-RN
           mkdir -p android/app/src/main/assets
           npx react-native bundle \
             --platform android \
@@ -49,10 +36,10 @@ jobs:
             --bundle-output android/app/src/main/assets/index.android.bundle
 
       - name: Build Release APK
-        run: cd android && ./gradlew assembleRelease
+        run: cd SAMP-Mobile-Launcher-RN/android && ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: SAMP-Mobile-Launcher-RN/android/app/build/outputs/apk/release/*.apk
