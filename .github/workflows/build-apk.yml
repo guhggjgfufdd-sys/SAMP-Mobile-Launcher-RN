@@ -18,6 +18,7 @@ jobs:
           cp SAMP-Mobile-Launcher-RN/android/settings.gradle /tmp/original-settings.gradle
           cp SAMP-Mobile-Launcher-RN/android/build.gradle /tmp/original-build.gradle
           cp SAMP-Mobile-Launcher-RN/android/app/build.gradle /tmp/original-app-build.gradle
+          cp SAMP-Mobile-Launcher-RN/android/gradle.properties /tmp/original-gradle.properties
 
       - name: Checkout YOUR custom files
         uses: actions/checkout@v4
@@ -26,14 +27,16 @@ jobs:
 
       - name: Merge ALL your custom files
         run: |
-          # ننسخ كل شي من فوركك (icon, name, src, assets, .env, app.json, إلخ)
           cp -r fork/* SAMP-Mobile-Launcher-RN/ 2>/dev/null || true
           cp -r fork/.[!.]* SAMP-Mobile-Launcher-RN/ 2>/dev/null || true
-          # نرجع الملفات التالفة للأصلية (اللي تسبب مشاكل Gradle)
+
+      - name: Restore original Gradle files
+        run: |
           cp /tmp/original-package.json SAMP-Mobile-Launcher-RN/package.json
           cp /tmp/original-settings.gradle SAMP-Mobile-Launcher-RN/android/settings.gradle
           cp /tmp/original-build.gradle SAMP-Mobile-Launcher-RN/android/build.gradle
           cp /tmp/original-app-build.gradle SAMP-Mobile-Launcher-RN/android/app/build.gradle
+          cp /tmp/original-gradle.properties SAMP-Mobile-Launcher-RN/android/gradle.properties
 
       - name: Setup Node.js 16
         uses: actions/setup-node@v4
