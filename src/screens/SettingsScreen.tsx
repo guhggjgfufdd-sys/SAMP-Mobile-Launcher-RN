@@ -1,216 +1,256 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   Switch,
-  ScrollView,
   TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const SettingsScreen = () => {
+const SettingsScreen = () => {
   const [nickname, setNickname] = useState('');
   const [winterMap, setWinterMap] = useState(false);
-  const [improvedGraphics, setImprovedGraphics] = useState(false);
-  const [showFps, setShowFps] = useState(false);
+  const [enhancedGraphics, setEnhancedGraphics] = useState(false);
+  const [fpsCounter, setFpsCounter] = useState(false);
   const [androidKeyboard, setAndroidKeyboard] = useState(true);
   const [fpsLimit, setFpsLimit] = useState(60);
   const [chatLines, setChatLines] = useState(5);
+  
+  // ✅ إضافات جديدة لحل الشاشة السوداء
+  const [compatibilityMode, setCompatibilityMode] = useState(false);
+  const [reduceGraphics, setReduceGraphics] = useState(false);
+  const [gpuRenderer, setGpuRenderer] = useState('default'); // default, opengl, vulkan
 
-  // التحكم في الـ FPS
-  const increaseFps = () => setFpsLimit(prev => Math.min(prev + 5, 90));
-  const decreaseFps = () => setFpsLimit(prev => Math.max(prev - 5, 30));
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
-  // التحكم في أسطر الدردشة
-  const increaseLines = () => setChatLines(prev => Math.min(prev + 1, 15));
-  const decreaseLines = () => setChatLines(prev => Math.max(prev - 1, 3));
+  const loadSettings = async () => {
+    try {
+      const savedNick = await AsyncStorage.getItem('@samp_nickname');
+      const savedRenderer = await AsyncStorage.getItem('@samp_gpu_renderer');
+      const savedCompat = await AsyncStorage.getItem('@samp_compat_mode');
+      const savedReduce = await AsyncStorage.getItem('@samp_reduce_graphics');
+      
+      if (savedNick) setNickname(savedNick);
+      if (savedRenderer) setGpuRenderer(savedRenderer);
+      if (savedCompat) setCompatibilityMode(savedCompat === 'true');
+      if (savedReduce) setReduceGraphics(savedReduce === 'true');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveSetting = async (key, value) => {
+    try {
+      await AsyncStorage.setItem(key, String(value));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleNicknameChange = (text) => {
+    setNickname(text);
+    saveSetting('@samp_nickname', text);
+  };
+
+  const toggleEnhancedGraphics = (value) => {
+    setEnhancedGraphics(value);
+    if (value) {
+      Alert.alert(
+        'تنبيه',
+        'تفعيل الجرافيك المحسن ممكن يسبب طرد من السيرفر في بعض الأجهزة. جرّب تطفيه لو طلعت.',
+        [{ text: 'فهمت' }]
+      );
+    }
+  };
+
+  const applyFixes = () => {
+    if (reduceGraphics) {
+      setFpsLimit(30);
+      setChatLines(3);
+      setEnhancedGraphics(false);
+      saveSetting('@samp_fps_limit', '30');
+      saveSetting('@samp_chat_lines', '3');
+    }
+    Alert.alert('تم', 'تم تطبيق إعدادات الحماية من الشاشة السوداء');
+  };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.headerTitle}>الإعدادات</Text>
+    <ScrollView style={styles.container}>
+      <Text style={styles.header}>الإعدادات</Text>
 
-        {/* إدخال اسم اللاعب */}
-        <View style={styles.section}>
-          <Text style={styles.label}>الاسم في اللعبة (NickName)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="مثال: Don_Corleone"
-            placeholderTextColor="#6C728E"
-            value={nickname}
-            onChangeText={setNickname}
-          />
+      {/* الاسم */}
+      <Text style={styles.label}>الاسم في اللعبة (NickName)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="مثال: Don_Corleone"
+        placeholderTextColor="#666"
+        value={nickname}
+        onChangeText={handleNicknameChange}
+        autoCapitalize="none"
+      />
+
+      {/* الخيارات الأساسية */}
+      <SettingRow label="خريطة الشتاء" value={winterMap} onToggle={setWinterMap} />
+      <SettingRow 
+        label="الجرافيك المحسن" 
+        value={enhancedGraphics} 
+        onToggle={toggleEnhancedGraphics} 
+      />
+      <SettingRow label="عداد الـ FPS" value={fpsCounter} onToggle={setFpsCounter} />
+      <SettingRow label="لوحة مفاتيح أندرويد" value={androidKeyboard} onToggle={setAndroidKeyboard} />
+
+      <View style={styles.divider} />
+
+      {/* FPS Limit */}
+      <View style={styles.row}>
+        <Text style={styles.label}>معدل الإطارات (FPS): {fpsLimit}</Text>
+        <View style={styles.counter}>
+          <TouchableOpacity 
+            style={styles.btn} 
+            onPress={() => { const v = Math.min(fpsLimit + 5, 120); setFpsLimit(v); saveSetting('@samp_fps_limit', v); }}
+          >
+            <Text style={styles.btnText}>+</Text>
+          </TouchableOpacity>
+          <Text style={styles.counterText}>{fpsLimit}</Text>
+          <TouchableOpacity 
+            style={styles.btn} 
+            onPress={() => { const v = Math.max(fpsLimit - 5, 20); setFpsLimit(v); saveSetting('@samp_fps_limit', v); }}
+          >
+            <Text style={styles.btnText}>-</Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* المفاتيح والخيارات */}
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>خريطة الشتاء</Text>
-          <Switch
-            value={winterMap}
-            onValueChange={setWinterMap}
-            thumbColor={winterMap ? '#6B8AFD' : '#f4f3f4'}
-            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
-          />
+      {/* Chat Lines */}
+      <View style={styles.row}>
+        <Text style={styles.label}>عدد أسطر الدردشة: {chatLines}</Text>
+        <View style={styles.counter}>
+          <TouchableOpacity 
+            style={styles.btn} 
+            onPress={() => { const v = Math.min(chatLines + 1, 10); setChatLines(v); saveSetting('@samp_chat_lines', v); }}
+          >
+            <Text style={styles.btnText}>+</Text>
+          </TouchableOpacity>
+          <Text style={styles.counterText}>{chatLines}</Text>
+          <TouchableOpacity 
+            style={styles.btn} 
+            onPress={() => { const v = Math.max(chatLines - 1, 1); setChatLines(v); saveSetting('@samp_chat_lines', v); }}
+          >
+            <Text style={styles.btnText}>-</Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>الجرافيك المحسن</Text>
-          <Switch
-            value={improvedGraphics}
-            onValueChange={setImprovedGraphics}
-            thumbColor={improvedGraphics ? '#6B8AFD' : '#f4f3f4'}
-            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
-          />
-        </View>
+      <View style={styles.divider} />
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>عداد الـ FPS</Text>
-          <Switch
-            value={showFps}
-            onValueChange={setShowFps}
-            thumbColor={showFps ? '#6B8AFD' : '#f4f3f4'}
-            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
-          />
-        </View>
+      {/* ✅ إضافات حل الشاشة السوداء */}
+      <Text style={styles.sectionTitle}>⚡ حلول الشاشة السوداء</Text>
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>لوحة مفاتيح أندرويد</Text>
-          <Switch
-            value={androidKeyboard}
-            onValueChange={setAndroidKeyboard}
-            thumbColor={androidKeyboard ? '#6B8AFD' : '#f4f3f4'}
-            trackColor={{ false: '#2A2D43', true: '#3D53A0' }}
-          />
-        </View>
+      <SettingRow 
+        label="وضع التوافق (منع الطرد)" 
+        value={compatibilityMode} 
+        onToggle={(v) => { setCompatibilityMode(v); saveSetting('@samp_compat_mode', v); }}
+      />
+      
+      <SettingRow 
+        label="تقليل الجرافيكس تلقائياً" 
+        value={reduceGraphics} 
+        onToggle={(v) => { setReduceGraphics(v); saveSetting('@samp_reduce_graphics', v); if (v) applyFixes(); }}
+      />
 
-        <View style={styles.divider} />
+      {/* GPU Renderer Selector */}
+      <Text style={styles.label}>محرك الرسوميات (GPU):</Text>
+      <View style={styles.rendererContainer}>
+        {['default', 'opengl', 'vulkan'].map((r) => (
+          <TouchableOpacity
+            key={r}
+            style={[
+              styles.rendererBtn,
+              gpuRenderer === r && styles.rendererBtnActive
+            ]}
+            onPress={() => { setGpuRenderer(r); saveSetting('@samp_gpu_renderer', r); }}
+          >
+            <Text style={gpuRenderer === r ? styles.rendererTextActive : styles.rendererText}>
+              {r === 'default' ? 'تلقائي' : r === 'opengl' ? 'OpenGL ES' : 'Vulkan'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        {/* أزرار زيادة ونقصان الـ FPS */}
-        <View style={styles.controlRow}>
-          <Text style={styles.controlLabel}>معدل الإطارات (FPS): {fpsLimit}</Text>
-          <View style={styles.btnGroup}>
-            <TouchableOpacity style={styles.btnCounter} onPress={decreaseFps}>
-              <Text style={styles.btnCounterText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.counterValue}>{fpsLimit}</Text>
-            <TouchableOpacity style={styles.btnCounter} onPress={increaseFps}>
-              <Text style={styles.btnCounterText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <Text style={styles.hint}>
+        💡 نصيحة: لو بتتطرد، جرّب "وضع التوافق" + خفّف FPS لـ 30 + طفّ "الجرافيك المحسن"
+      </Text>
 
-        {/* أزرار زيادة ونقصان أسطر الدردشة */}
-        <View style={styles.controlRow}>
-          <Text style={styles.controlLabel}>عدد أسطر الدردشة: {chatLines}</Text>
-          <View style={styles.btnGroup}>
-            <TouchableOpacity style={styles.btnCounter} onPress={decreaseLines}>
-              <Text style={styles.btnCounterText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.counterValue}>{chatLines}</Text>
-            <TouchableOpacity style={styles.btnCounter} onPress={increaseLines}>
-              <Text style={styles.btnCounterText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <Text style={styles.versionText}>الإصدار 1.0.0</Text>
-      </ScrollView>
-    </View>
+      <Text style={styles.version}>الإصدار 1.0.0</Text>
+    </ScrollView>
   );
 };
 
+const SettingRow = ({ label, value, onToggle }) => (
+  <View style={styles.row}>
+    <Text style={styles.label}>{label}</Text>
+    <Switch
+      value={value}
+      onValueChange={onToggle}
+      trackColor={{ false: '#333', true: '#4A90D9' }}
+      thumbColor={value ? '#fff' : '#f4f3f4'}
+    />
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#12131C',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-  },
-  scrollContainer: {
-    paddingBottom: 100,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'right',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  label: {
-    color: '#A0A5BA',
-    fontSize: 14,
-    marginBottom: 8,
-    textAlign: 'right',
-  },
+  container: { flex: 1, backgroundColor: '#1a1a2e', padding: 20 },
+  header: { fontSize: 28, color: '#fff', textAlign: 'center', marginBottom: 20, fontWeight: 'bold' },
+  sectionTitle: { fontSize: 18, color: '#4A90D9', marginVertical: 10, fontWeight: 'bold' },
+  label: { color: '#fff', fontSize: 16, marginBottom: 8 },
   input: {
-    backgroundColor: '#1E202F',
-    borderRadius: 10,
-    padding: 14,
-    color: '#FFFFFF',
+    backgroundColor: '#16213e',
+    color: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    fontSize: 16,
+    marginBottom: 20,
     textAlign: 'right',
-    borderWidth: 1,
-    borderColor: '#2A2D43',
   },
-  switchRow: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  switchLabel: {
-    color: '#FFFFFF',
-    fontSize: 15,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#2A2D43',
-    marginVertical: 15,
-  },
-  controlRow: {
-    flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: 12,
   },
-  controlLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  btnGroup: {
-    flexDirection: 'row',
+  divider: { height: 1, backgroundColor: '#333', marginVertical: 15 },
+  counter: { flexDirection: 'row', alignItems: 'center' },
+  btn: {
+    backgroundColor: '#4A90D9',
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1E202F',
+    marginHorizontal: 5,
+  },
+  btnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  counterText: { color: '#fff', fontSize: 18, width: 40, textAlign: 'center' },
+  rendererContainer: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
+  rendererBtn: {
+    backgroundColor: '#16213e',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2A2D43',
+    borderColor: '#333',
   },
-  btnCounter: {
-    backgroundColor: '#6B8AFD',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  btnCounterText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  counterValue: {
-    color: '#FFFFFF',
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  versionText: {
-    color: '#6C728E',
-    textAlign: 'center',
-    marginTop: 30,
-    fontSize: 12,
-  },
+  rendererBtnActive: { backgroundColor: '#4A90D9', borderColor: '#4A90D9' },
+  rendererText: { color: '#aaa' },
+  rendererTextActive: { color: '#fff', fontWeight: 'bold' },
+  hint: { color: '#888', fontSize: 13, marginTop: 15, textAlign: 'center', lineHeight: 20 },
+  version: { color: '#555', textAlign: 'center', marginTop: 30, marginBottom: 50 },
 });
 
 export default SettingsScreen;
