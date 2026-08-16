@@ -1,3 +1,5 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
@@ -6,6 +8,7 @@ buildscript {
         targetSdkVersion = 34
         ndkVersion = "25.1.8937393"
         kotlinVersion = "1.9.0"
+        hermesEnabled = true
     }
     repositories {
         google()
@@ -24,3 +27,5 @@ allprojects {
         mavenCentral()
     }
 }
+
+apply plugin: "com.facebook.react.rootproject"
