@@ -1,7 +1,7 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { StatusBar, View } from 'react-native';
@@ -58,7 +58,7 @@ export const NavigationRouter = React.memo(() => {
     <NavigationContainer
       onReady={() => RNBootSplash.hide({ fade: true })}
       ref={navigationRef}
-      theme={DarkTheme}>
+      theme={DefaultTheme}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StatusBar translucent backgroundColor="transparent" />
         <BottomSheetModalProvider>
@@ -69,7 +69,6 @@ export const NavigationRouter = React.memo(() => {
               gestureEnabled: false,
               animationTypeForReplace: 'push',
               animationDuration: 350,
-              animation: 'flip',
             }}
             initialRouteName={isModeType ? 'Initiation' : 'ModeScreen'}>
             <Stack.Screen name="Main" component={TabBarNavigation} />
