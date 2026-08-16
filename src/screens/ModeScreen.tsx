@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const getItem = async (key: string, defaultValue: any): Promise<any> => {
   try {
     const item = await AsyncStorage.getItem(key);
-    if (item === null || item === '' || item === 'null' || item === 'undefined') {
+    if (item === null || item === '' || item === 'null') {
       return defaultValue;
     }
     return JSON.parse(item);
@@ -57,7 +57,7 @@ const ModeScreen: React.FC = () => {
     setLoading(true);
     try {
       const saved = await getItem(SERVER_KEY, DEFAULT_SERVER);
-      if (saved && typeof saved === 'object' && saved.ip && saved.port && saved.name) {
+      if (saved && typeof saved === 'object' && saved.ip && saved.port) {
         setServer(saved);
       } else {
         setServer(DEFAULT_SERVER);
