@@ -1,32 +1,38 @@
-package com.touch.mobile.dark;
+package com.touchmobile;
 
 import android.os.Bundle;
-import android.view.WindowManager;
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
-import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
-import com.facebook.react.defaults.DefaultReactActivityDelegate;
+import com.facebook.react.ReactRootView;
 import com.zoontek.rnbootsplash.RNBootSplash;
 
 public class MainActivity extends ReactActivity {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        RNBootSplash.init(this, R.style.BootTheme);
-        super.onCreate(savedInstanceState);
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    RNBootSplash.init(this);
+    super.onCreate(savedInstanceState);
+  }
+
+  @Override
+  protected String getMainComponentName() {
+    return "TouchMobile";
+  }
+
+  @Override
+  protected ReactActivityDelegate createReactActivityDelegate() {
+    return new MainActivityDelegate(this, getMainComponentName());
+  }
+
+  public static class MainActivityDelegate extends ReactActivityDelegate {
+    public MainActivityDelegate(ReactActivity activity, String mainComponentName) {
+      super(activity, mainComponentName);
     }
 
     @Override
-    protected String getMainComponentName() {
-        return "TouchMobile";
+    protected ReactRootView createRootView() {
+      ReactRootView reactRootView = new ReactRootView(getContext());
+      return reactRootView;
     }
-
-    @Override
-    protected ReactActivityDelegate createReactActivityDelegate() {
-        return new DefaultReactActivityDelegate(
-                this,
-                getMainComponentName(),
-                false);
-    }
+  }
 }
