@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>التطبيق يشتغل!</Text>
+      <Text style={styles.text}>TEST</Text>
     </View>
   );
 }
@@ -12,12 +12,12 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'red',
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
-    color: '#000000',
-    fontSize: 24,
+    color: 'white',
+    fontSize: 40,
   },
 });
