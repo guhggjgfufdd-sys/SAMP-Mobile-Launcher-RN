@@ -10,8 +10,7 @@ import {
   NativeModules,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { safeGetItem } from '../utils/storage';
-
+import { safeGetItem } from '../../utils/storage';
 interface ServerInfo {
   name: string;
   ip: string;
