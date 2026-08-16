@@ -1,35 +1,30 @@
-import { createStore, applyMiddleware, combineReducers } from 'redux';
-import { persistStore, persistReducer } from 'redux-persist';
-import thunk from 'redux-thunk';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-// ====== Reducers ======
-const appReducer = (state = { mode: 'default' }, action: any) => {
-  switch (action.type) {
-    case 'SET_MODE_TYPE':
-      return { ...state, mode: action.payload };
-    default:
-      return state;
-  }
+interface UserState {
+  username: string;
+}
+
+const initialState: UserState = {
+  username: '',
 };
 
-const rootReducer = combineReducers({
-  app: appReducer,
+const userSlice = createSlice({
+  name: 'user',
+  initialState,
+  reducers: {
+    setUsername: (state, action: PayloadAction<string>) => {
+      state.username = action.payload;
+    },
+  },
 });
 
-// ====== Persist Config ======
-const persistConfig = {
-  key: 'root',
-  storage: AsyncStorage,
-  whitelist: ['app'],
-};
+export const { setUsername } = userSlice.actions;
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+export const store = configureStore({
+  reducer: {
+    user: userSlice.reducer,
+  },
+});
 
-// ====== Store ======
-export const store = createStore(persistedReducer, applyMiddleware(thunk));
-export const persistor = persistStore(store);
-
-// ====== Types ======
-export type RootState = ReturnType<typeof rootReducer>;
+export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
