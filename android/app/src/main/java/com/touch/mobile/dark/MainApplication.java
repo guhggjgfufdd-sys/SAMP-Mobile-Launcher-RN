@@ -56,6 +56,6 @@ public class MainApplication extends Application implements ReactApplication {
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
             DefaultNewArchitectureEntryPoint.load();
         }
-        ReactNativeFlipper.initializeFlipper(this, getReactNativeHost().getReactInstanceManager());
+        // شلنا ReactNativeFlipper لأنه يسبب شاشة سوداء في release build
     }
 }
