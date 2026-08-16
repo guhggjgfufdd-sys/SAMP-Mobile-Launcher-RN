@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { safeGetItem, safeSetItem } from '../../utils/storage';
 import {
   View,
   Text,
