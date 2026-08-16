@@ -1,119 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  NativeModules,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const getItem = async (key: string, defaultValue: any): Promise<any> => {
-  try {
-    const item = await AsyncStorage.getItem(key);
-    if (item === null || item === '' || item === 'null') {
-      return defaultValue;
-    }
-    return JSON.parse(item);
-  } catch (error) {
-    try {
-      await AsyncStorage.removeItem(key);
-    } catch (e) {}
-    return defaultValue;
-  }
-};
-
-interface ServerInfo {
-  name: string;
-  ip: string;
-  port: number;
-  players: number;
-  maxPlayers: number;
-  online: boolean;
-}
-
-const DEFAULT_SERVER: ServerInfo = {
-  name: 'Las Venturas RP',
-  ip: '142.132.203.47',
-  port: 21299,
-  players: 0,
-  maxPlayers: 100,
-  online: true,
-};
-
-const SERVER_KEY = '@samp_server_info';
-const CACHE_KEY = '@samp_cache_downloaded';
 
 const ModeScreen: React.FC = () => {
-  const [server, setServer] = useState<ServerInfo>(DEFAULT_SERVER);
-  const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-
-  const loadServerInfo = useCallback(async () => {
-    setLoading(true);
-    try {
-      const saved = await getItem(SERVER_KEY, DEFAULT_SERVER);
-      if (saved && typeof saved === 'object' && saved.ip && saved.port) {
-        setServer(saved);
-      } else {
-        setServer(DEFAULT_SERVER);
-      }
-    } catch (e) {
-      setServer(DEFAULT_SERVER);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadServerInfo();
-  }, [loadServerInfo]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadServerInfo();
-    }, [loadServerInfo])
-  );
-
-  const handlePlay = async () => {
-    try {
-      const hasCache = await getItem(CACHE_KEY, false);
-      if (!hasCache) {
-        Alert.alert('الكاش ناقص', 'يجب تحميل ملفات الكاش أولاً.', [{ text: 'حسناً' }]);
-        return;
-      }
-      setConnecting(true);
-      if (NativeModules.SAMPLauncher?.connect) {
-        await NativeModules.SAMPLauncher.connect(server.ip, server.port);
-      } else {
-        setTimeout(() => {
-          setConnecting(false);
-          Alert.alert('تنبيه', 'Native Module غير متوفر.');
-        }, 1000);
-      }
-    } catch (error) {
-      setConnecting(false);
-      Alert.alert('خطأ في الاتصال', 'تعذر الاتصال بالسيرفر.');
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>الرئيسية</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#5b8def" />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -129,22 +23,18 @@ const ModeScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
         <View style={styles.serverCard}>
           <View style={styles.serverHeader}>
-            <Text style={styles.serverName}>{server.name}</Text>
+            <Text style={styles.serverName}>Las Venturas RP</Text>
             <View style={styles.serverStatus}>
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>متصل</Text>
             </View>
           </View>
-          <Text style={styles.serverIp}>{server.ip}:{server.port}</Text>
+          <Text style={styles.serverIp}>142.132.203.47:21299</Text>
           <View style={styles.serverFooter}>
-            <Text style={styles.playerCount}>اللاعبين: {server.players} / {server.maxPlayers}</Text>
-            <TouchableOpacity
-              style={[styles.playButton, connecting && styles.playButtonDisabled]}
-              onPress={handlePlay}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.playButtonText}>{connecting ? 'جاري الاتصال...' : 'بدء اللعب'}</Text>
-              {!connecting && <Text style={styles.playIcon}>▶</Text>}
+            <Text style={styles.playerCount}>اللاعبين: 0 / 100</Text>
+            <TouchableOpacity style={styles.playButton} activeOpacity={0.8}>
+              <Text style={styles.playButtonText}>بدء اللعب</Text>
+              <Text style={styles.playIcon}>▶</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -157,7 +47,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0c10' },
   header: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 16, backgroundColor: '#0b0c10' },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#ffffff', textAlign: 'right' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
   content: { padding: 16, paddingBottom: 100 },
   sectionTitle: { fontSize: 17, fontWeight: '600', color: '#ffffff', marginBottom: 12, textAlign: 'right' },
@@ -174,7 +63,6 @@ const styles = StyleSheet.create({
   serverFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   playerCount: { fontSize: 14, color: '#9ca3af' },
   playButton: { backgroundColor: '#5b8def', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  playButtonDisabled: { opacity: 0.6 },
   playButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
   playIcon: { color: '#ffffff', fontSize: 12 },
 });
