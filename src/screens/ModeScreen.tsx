@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  NativeModules,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { safeGetItem } from '../utils/storage';
@@ -30,8 +31,9 @@ const DEFAULT_SERVER: ServerInfo = {
 };
 
 const SERVER_KEY = '@samp_server_info';
+const CACHE_KEY = '@samp_cache_downloaded';
 
-const HomeScreen: React.FC = () => {
+const ModeScreen: React.FC = () => {
   const navigation = useNavigation();
   const [server, setServer] = useState<ServerInfo>(DEFAULT_SERVER);
   const [loading, setLoading] = useState(true);
@@ -39,9 +41,14 @@ const HomeScreen: React.FC = () => {
 
   const loadServerInfo = useCallback(async () => {
     setLoading(true);
-    const saved = await safeGetItem<ServerInfo>(SERVER_KEY, DEFAULT_SERVER);
-    setServer(saved);
-    setLoading(false);
+    try {
+      const saved = await safeGetItem<ServerInfo>(SERVER_KEY, DEFAULT_SERVER);
+      setServer(saved);
+    } catch (e) {
+      console.error('Error loading server info:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -52,17 +59,29 @@ const HomeScreen: React.FC = () => {
 
   const handlePlay = async () => {
     try {
+      // تحقق من الكاش أولاً
+      const hasCache = await safeGetItem<boolean>(CACHE_KEY, false);
+      if (!hasCache) {
+        Alert.alert(
+          'الكاش ناقص',
+          'يجب تحميل ملفات الكاش أولاً قبل الدخول للعبة.',
+          [{ text: 'حسناً' }]
+        );
+        return;
+      }
+
       setConnecting(true);
-      
-      // هنا تستدعي دالة الاتصال بالسيرفر من native module
-      // مثال: await NativeModules.SAMPLauncher.connect(server.ip, server.port);
-      
-      // محاكاة الاتصال
-      setTimeout(() => {
-        setConnecting(false);
-        // التنقل للعبة
-      }, 2000);
-      
+
+      // استدعي Native Module للاتصال بالسيرفر
+      if (NativeModules.SAMPLauncher && NativeModules.SAMPLauncher.connect) {
+        await NativeModules.SAMPLauncher.connect(server.ip, server.port);
+      } else {
+        // إذا ما موجود Native Module، ننتظر شوي ونطلع رسالة
+        setTimeout(() => {
+          setConnecting(false);
+          Alert.alert('تنبيه', 'Native Module غير متوفر. تأكد من بناء التطبيق بشكل صحيح.');
+        }, 1000);
+      }
     } catch (error) {
       setConnecting(false);
       console.error('Connection error:', error);
@@ -90,7 +109,6 @@ const HomeScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* أخبار المشروع */}
         <Text style={styles.sectionTitle}>أخبار المشروع</Text>
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>السيرفر يعمل الآن! 🔥</Text>
@@ -99,7 +117,6 @@ const HomeScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* اختيار السيرفر */}
         <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
         <View style={styles.serverCard}>
           <View style={styles.serverHeader}>
@@ -109,17 +126,15 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.statusText}>متصل</Text>
             </View>
           </View>
-          
-          <Text style={styles.serverIp}>
-            {server.ip}:{server.port}
-          </Text>
+
+          <Text style={styles.serverIp}>{server.ip}:{server.port}</Text>
 
           <View style={styles.serverFooter}>
             <Text style={styles.playerCount}>
               اللاعبين: {server.players} / {server.maxPlayers}
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.playButton, connecting && styles.playButtonDisabled]}
               onPress={handlePlay}
               disabled={connecting}
@@ -127,9 +142,7 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.playButtonText}>
                 {connecting ? 'جاري الاتصال...' : 'بدء اللعب'}
               </Text>
-              {!connecting && (
-                <Text style={styles.playIcon}>▶</Text>
-              )}
+              {!connecting && <Text style={styles.playIcon}>▶</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -139,132 +152,29 @@ const HomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0b0c10',
-  },
-  header: {
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#0b0c10',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    textAlign: 'right',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 12,
-    textAlign: 'right',
-  },
-  newsCard: {
-    backgroundColor: '#1a1c23',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#2a2d36',
-  },
-  newsTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#5b8def',
-    marginBottom: 8,
-    textAlign: 'right',
-  },
-  newsDesc: {
-    fontSize: 14,
-    color: '#9ca3af',
-    lineHeight: 20,
-    textAlign: 'right',
-  },
-  serverCard: {
-    backgroundColor: '#1a1c23',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#5b8def',
-  },
-  serverHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  serverName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  serverStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    backgroundColor: '#4ade80',
-    borderRadius: 5,
-  },
-  statusText: {
-    fontSize: 14,
-    color: '#4ade80',
-    fontWeight: '500',
-  },
-  serverIp: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 16,
-    fontVariant: ['tabular-nums'],
-  },
-  serverFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  playerCount: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  playButton: {
-    backgroundColor: '#5b8def',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  playButtonDisabled: {
-    opacity: 0.6,
-  },
-  playButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  playIcon: {
-    color: '#ffffff',
-    fontSize: 12,
-  },
+  container: { flex: 1, backgroundColor: '#0b0c10' },
+  header: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 16, backgroundColor: '#0b0c10' },
+  headerTitle: { fontSize: 20, fontWeight: '600', color: '#ffffff', textAlign: 'right' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scrollView: { flex: 1 },
+  content: { padding: 16, paddingBottom: 100 },
+  sectionTitle: { fontSize: 17, fontWeight: '600', color: '#ffffff', marginBottom: 12, textAlign: 'right' },
+  newsCard: { backgroundColor: '#1a1c23', borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#2a2d36' },
+  newsTitle: { fontSize: 16, fontWeight: '500', color: '#5b8def', marginBottom: 8, textAlign: 'right' },
+  newsDesc: { fontSize: 14, color: '#9ca3af', lineHeight: 20, textAlign: 'right' },
+  serverCard: { backgroundColor: '#1a1c23', borderRadius: 12, padding: 16, borderWidth: 1.5, borderColor: '#5b8def' },
+  serverHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  serverName: { fontSize: 18, fontWeight: '600', color: '#ffffff' },
+  serverStatus: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 10, height: 10, backgroundColor: '#4ade80', borderRadius: 5 },
+  statusText: { fontSize: 14, color: '#4ade80', fontWeight: '500' },
+  serverIp: { fontSize: 14, color: '#9ca3af', marginBottom: 16, fontVariant: ['tabular-nums'] },
+  serverFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  playerCount: { fontSize: 14, color: '#9ca3af' },
+  playButton: { backgroundColor: '#5b8def', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  playButtonDisabled: { opacity: 0.6 },
+  playButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
+  playIcon: { color: '#ffffff', fontSize: 12 },
 });
 
-export default HomeScreen;
+export default ModeScreen;
