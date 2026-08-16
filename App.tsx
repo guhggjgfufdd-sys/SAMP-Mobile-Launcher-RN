@@ -1,23 +1,27 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { BackHandler, View, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationRouter } from './src/routers/navigation-router';
 
 export default function App() {
+  useEffect(() => {
+    const backAction = () => true;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>TEST</Text>
-    </View>
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <NavigationRouter />
+      </View>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'red',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    color: 'white',
-    fontSize: 40,
+    backgroundColor: '#000000',
   },
 });
