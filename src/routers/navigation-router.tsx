@@ -7,15 +7,12 @@ import { StatusBar, View, StyleSheet } from 'react-native';
 import RNBootSplash from 'react-native-bootsplash';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAppDispatch } from '../hooks';
-import { setModeType } from '../actions';
 
-// استورد شاشاتك هنا حسب مشروعك
-// import ModeScreen from '../screens/ModeScreen';
+// استورد شاشاتك حسب مشروعك
+import ModeScreen from '../screens/ModeScreen';
 // import HomeScreen from '../screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
 const MyTheme = {
   ...DefaultTheme,
@@ -30,26 +27,22 @@ const MyTheme = {
 };
 
 const NavigationRouter = () => {
-  const dispatch = useAppDispatch();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // إخفاء Splash Screen بعد ما يجهز النظام
     const init = async () => {
       try {
-        // أي تهيئة تبيها (Redox persist مثلاً)
         await new Promise(resolve => setTimeout(resolve, 500));
       } finally {
         setIsReady(true);
         await RNBootSplash.hide({ fade: true });
       }
     };
-
     init();
-  }, [dispatch]);
+  }, []);
 
   if (!isReady) {
-    return null; // أو شاشة loading
+    return null;
   }
 
   return (
@@ -60,7 +53,6 @@ const NavigationRouter = () => {
             <StatusBar barStyle="light-content" backgroundColor="#0b0c10" />
             <Stack.Navigator screenOptions={{ headerShown: false }}>
               <Stack.Screen name="Mode" component={ModeScreen} />
-              {/* أضف باقي الشاشات هنا */}
             </Stack.Navigator>
           </NavigationContainer>
         </BottomSheetModalProvider>
