@@ -1,27 +1,30 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ModeScreen from '../screens/ModeScreen';
-import GameScreen from '../screens/GameScreen';
+import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type RootStackParamList = {
-  Mode: undefined;
-  Game: { username: string };
+interface UserState {
+  username: string;
+}
+
+const initialState: UserState = {
+  username: '',
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const userSlice = createSlice({
+  name: 'user',
+  initialState,
+  reducers: {
+    setUsername: (state, action: PayloadAction<string>) => {
+      state.username = action.payload;
+    },
+  },
+});
 
-const NavigationRouter = () => {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Mode"
-        screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="Mode" component={ModeScreen} />
-        <Stack.Screen name="Game" component={GameScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-};
+export const { setUsername } = userSlice.actions;
 
-export default NavigationRouter;
+export const store = configureStore({
+  reducer: {
+    user: userSlice.reducer,
+  },
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
