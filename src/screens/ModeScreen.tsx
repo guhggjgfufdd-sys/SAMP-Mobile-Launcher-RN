@@ -9,7 +9,7 @@ import {
   Alert,
   NativeModules,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getItem = async (key: string, defaultValue: any): Promise<any> => {
@@ -20,7 +20,6 @@ const getItem = async (key: string, defaultValue: any): Promise<any> => {
     }
     return JSON.parse(item);
   } catch (error) {
-    console.warn(`AsyncStorage error [${key}]:`, error);
     try {
       await AsyncStorage.removeItem(key);
     } catch (e) {}
@@ -50,15 +49,12 @@ const SERVER_KEY = '@samp_server_info';
 const CACHE_KEY = '@samp_cache_downloaded';
 
 const ModeScreen: React.FC = () => {
-  const navigation = useNavigation();
   const [server, setServer] = useState<ServerInfo>(DEFAULT_SERVER);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [hasError, setHasError] = useState(false);
 
   const loadServerInfo = useCallback(async () => {
     setLoading(true);
-    setHasError(false);
     try {
       const saved = await getItem(SERVER_KEY, DEFAULT_SERVER);
       if (saved && typeof saved === 'object' && saved.ip && saved.port && saved.name) {
@@ -67,7 +63,6 @@ const ModeScreen: React.FC = () => {
         setServer(DEFAULT_SERVER);
       }
     } catch (e) {
-      setHasError(true);
       setServer(DEFAULT_SERVER);
     } finally {
       setLoading(false);
@@ -114,22 +109,6 @@ const ModeScreen: React.FC = () => {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#5b8def" />
-        </View>
-      </View>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>الرئيسية</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>حدث خطأ في تحميل البيانات</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadServerInfo}>
-            <Text style={styles.retryText}>إعادة المحاولة</Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -198,9 +177,6 @@ const styles = StyleSheet.create({
   playButtonDisabled: { opacity: 0.6 },
   playButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
   playIcon: { color: '#ffffff', fontSize: 12 },
-  errorText: { color: '#ef4444', fontSize: 16, marginBottom: 16, textAlign: 'center' },
-  retryButton: { backgroundColor: '#5b8def', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 8 },
-  retryText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
 });
 
 export default ModeScreen;
