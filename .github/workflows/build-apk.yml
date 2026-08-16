@@ -1,7 +1,7 @@
 name: Build & Release APK
 
 on:
-  workflow_dispatch:  # ← تشغيل يدوي
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -27,7 +27,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Install deps
-        run: npm ci
+        run: npm install   # ← غيّرناها من npm ci
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
