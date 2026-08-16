@@ -1,8 +1,10 @@
+project.ext.react = [
+    enableHermes: false
+]
+
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-
-def enableHermes = false
 
 android {
     namespace "com.touch.mobile.dark"
