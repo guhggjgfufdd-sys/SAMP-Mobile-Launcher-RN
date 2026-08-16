@@ -1,6 +1,9 @@
-// src/hooks/index.ts
-import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
-import type { RootState, AppDispatch } from '../store'; // عدل حسب مشروعك
+import 'react-native-gesture-handler';
+import { enableScreens } from 'react-native-screens';
+enableScreens(true);
 
-export const useAppDispatch = () => useDispatch<AppDispatch>();
-export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+import { AppRegistry } from 'react-native';
+import App from './App';
+import { name as appName } from './app.json';
+
+AppRegistry.registerComponent(appName, () => App);
