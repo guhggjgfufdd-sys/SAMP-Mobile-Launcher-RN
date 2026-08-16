@@ -3,7 +3,7 @@ apply plugin: "com.facebook.react"
 
 project.ext.react = [
     enableHermes: false,
-    bundleInRelease: false,
+    bundleInRelease: true,
 ]
 
 project.ext.hermesEnabled = false
@@ -79,23 +79,12 @@ android {
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
     }
-
-    configurations.all {
-        resolutionStrategy {
-            force 'net.lingala.zip4j:zip4j:2.9.0'
-        }
-    }
 }
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation("com.facebook.react:react-android")
+    implementation "com.facebook.react:react-native:+"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
-    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
-    implementation "androidx.recyclerview:recyclerview:1.2.1"
-    implementation 'com.tuyenmonkey:mkloader:1.4.0'
-    implementation "androidx.multidex:multidex:2.0.1"
-    implementation jscFlavor
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
