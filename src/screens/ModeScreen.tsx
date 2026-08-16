@@ -1,177 +1,149 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import RNFS from 'react-native-fs';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { unzip } from 'react-native-zip-archive';
+import { useDispatch } from 'react-redux';
+import { setUsername } from '../store';
+import { RootStackParamList } from '../navigation/navigation-router';
 
-// ====== إعدادات الكاش ======
-const CACHE_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
-const CACHE_DIR = RNFS.ExternalDirectoryPath + '/SAMP';
-const CACHE_ZIP = RNFS.CachesDirectoryPath + '/cache.zip';
-const USERNAME_KEY = '@samp_username';
-const CACHE_READY_KEY = '@samp_cache_ready';
+type ModeScreenNav = NativeStackNavigationProp<RootStackParamList, 'Mode'>;
 
-const ModeScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const [username, setUsername] = useState('');
+const CACHE_URL = 'https://github.com/YOUR_USERNAME/YOUR_REPO/releases/download/v2.11/gtasa.zip';
+const SAMP_DIR = `${RNFS.ExternalDirectoryPath}/SAMP`;
+const EXTRACTED_FLAG = `${SAMP_DIR}/.extracted`;
+const ZIP_PATH = `${RNFS.ExternalDirectoryPath}/gtasa.zip`;
+
+const ModeScreen = () => {
+  const navigation = useNavigation<ModeScreenNav>();
+  const dispatch = useDispatch();
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('');
+  const [status, setStatus] = useState('');
 
-  // التحقق من وجود الكاش لما تفتح الشاشة
   useEffect(() => {
-    checkExistingCache();
+    checkCache();
   }, []);
 
-  const checkExistingCache = async () => {
-    try {
-      const flagExists = await RNFS.exists(CACHE_DIR + '/.extracted');
-      if (flagExists) {
-        setStatusText('الكاش موجود ✅ اضغط دخول');
-      }
-    } catch (e) {}
+  const checkCache = async () => {
+    const exists = await RNFS.exists(EXTRACTED_FLAG);
+    if (exists) {
+      setStatus('الكاش جاهز ✅');
+    }
   };
 
-  const handleEnter = async () => {
-    if (!username.trim()) {
-      Alert.alert('تنبيه', 'الرجاء إدخال اسم المستخدم');
+  const handleStart = async () => {
+    if (!name.trim()) {
+      Alert.alert('تنبيه', 'اكتب اسمك أولاً');
       return;
     }
 
-    // حفظ الاسم
-    await AsyncStorage.setItem(USERNAME_KEY, username.trim());
+    dispatch(setUsername(name.trim()));
 
-    // تحقق إذا الكاش موجود مسبقاً
-    const cacheExists = await RNFS.exists(CACHE_DIR + '/.extracted');
-    if (cacheExists) {
-      goToGameScreen();
+    const isCached = await RNFS.exists(EXTRACTED_FLAG);
+    if (isCached) {
+      navigation.navigate('Game', { username: name.trim() });
       return;
     }
 
-    // ابدأ التحميل
-    startDownload();
+    await downloadAndExtract();
   };
 
-  const startDownload = async () => {
-    setLoading(true);
-    setProgress(0);
-    setStatusText('جاري التحضير...');
-
+  const downloadAndExtract = async () => {
     try {
-      // 1) أنشئ مجلد SAMP
-      const cacheDirExists = await RNFS.exists(CACHE_DIR);
-      if (!cacheDirExists) {
-        await RNFS.mkdir(CACHE_DIR);
+      setLoading(true);
+      setStatus('جاري التحميل...');
+      setProgress(0);
+
+      // تأكد من وجود المجلد
+      await RNFS.mkdir(SAMP_DIR);
+
+      // حذف الملف القديم لو موجود
+      if (await RNFS.exists(ZIP_PATH)) {
+        await RNFS.unlink(ZIP_PATH);
       }
 
-      // احذف الملف القديل إذا موجود
-      const zipExists = await RNFS.exists(CACHE_ZIP);
-      if (zipExists) {
-        await RNFS.unlink(CACHE_ZIP);
-      }
-
-      setStatusText('جاري تحميل الكاش...');
-
-      // 2) التحميل الحقيقي بـ Progress
+      // تحميل الملف مع شريط تقدم حقيقي
       const download = RNFS.downloadFile({
         fromUrl: CACHE_URL,
-        toFile: CACHE_ZIP,
+        toFile: ZIP_PATH,
         begin: (res) => {
-          console.log('حجم الملف:', res.contentLength);
+          console.log('Started:', res.contentLength);
         },
         progress: (res) => {
-          const percent = res.bytesWritten / res.contentLength;
-          setProgress(percent);
-          setStatusText(`جاري التحميل... ${Math.round(percent * 100)}%`);
+          const percentage = (res.bytesWritten / res.contentLength) * 100;
+          setProgress(Math.round(percentage));
         },
       });
 
-      const result = await download.promise;
+      const result = download.promise;
+      await result;
 
-      if (result.statusCode !== 200) {
-        throw new Error(`خطأ في السيرفر: ${result.statusCode}`);
-      }
+      setStatus('جاري فك الضغط...');
+      setProgress(100);
 
-      // 3) فك الضغط (Unzip) — يشتغل بعد ما يكمل التحميل
-      setStatusText('جاري استخراج الملفات...');
-      await unzip(CACHE_ZIP, CACHE_DIR);
+      // فك الضغط
+      await unzip(ZIP_PATH, SAMP_DIR);
 
-      // علّم إن الاستخراج تم
-      await RNFS.writeFile(CACHE_DIR + '/.extracted', 'done');
-      await AsyncStorage.setItem(CACHE_READY_KEY, 'true');
+      // إنشاء ملف التحقق
+      await RNFS.writeFile(EXTRACTED_FLAG, 'extracted', 'utf8');
 
-      // احذف ملف ZIP المؤقت
-      await RNFS.unlink(CACHE_ZIP);
+      // حذف الـ ZIP بعد الفك
+      await RNFS.unlink(ZIP_PATH);
 
-      setStatusText('تم التحميل والاستخراج ✅');
-
-      // 4) الانتقال لشاشة السيرفرات بعد 0.8 ثانية
-      setTimeout(() => goToGameScreen(), 800);
-
-    } catch (error: any) {
-      console.error(error);
-      Alert.alert('خطأ', error.message || 'فشل تحميل الكاش');
-      setStatusText('فشل التحميل ❌');
-    } finally {
+      setStatus('تم ✅');
       setLoading(false);
-    }
-  };
 
-  const goToGameScreen = () => {
-    navigation.replace('Game', { username: username.trim() });
+      navigation.navigate('Game', { username: name.trim() });
+    } catch (error: any) {
+      setLoading(false);
+      Alert.alert('خطأ', `فشل التحميل: ${error.message}`);
+      console.error(error);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>★</Text>
-      <Text style={styles.brand}>TOUCH MOBILE</Text>
+      <Text style={styles.title}>SAMP Mobile</Text>
+      <Text style={styles.subtitle}>شاشة البداية</Text>
 
-      <Text style={styles.label}>اسم المستخدم</Text>
       <TextInput
         style={styles.input}
-        placeholder="أدخل اسمك"
-        placeholderTextColor="#666"
-        value={username}
-        onChangeText={setUsername}
-        textAlign="right"
-        editable={!loading}
+        placeholder="اكتب اسمك هنا..."
+        placeholderTextColor="#888"
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="none"
       />
 
-      {/* شريط التقدم الحقيقي */}
-      {loading && (
-        <View style={styles.progressBox}>
-          <ActivityIndicator size="large" color="#5b8def" />
-          <Text style={styles.statusText}>{statusText}</Text>
-          <View style={styles.barBg}>
-            <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
-          </View>
-          <Text style={styles.percentText}>{Math.round(progress * 100)}%</Text>
+      {loading ? (
+        <View style={styles.loaderBox}>
+          <ActivityIndicator size="large" color="#00ff88" />
+          <Text style={styles.statusText}>{status}</Text>
+          {progress > 0 && progress < 100 && (
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressBar, { width: `${progress}%` }]} />
+            </View>
+          )}
+          <Text style={styles.percentText}>{progress}%</Text>
         </View>
+      ) : (
+        <TouchableOpacity style={styles.button} onPress={handleStart}>
+          <Text style={styles.buttonText}>
+            {RNFS.exists(EXTRACTED_FLAG) ? 'دخول للسيرفرات' : 'تحميل الكاش والدخول'}
+          </Text>
+        </TouchableOpacity>
       )}
-
-      {!loading && statusText !== '' && (
-        <Text style={styles.statusText}>{statusText}</Text>
-      )}
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleEnter}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'جاري التحميل...' : 'الدخول'}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -179,63 +151,75 @@ const ModeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0c10',
+    backgroundColor: '#0d0d0d',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
-  logo: { fontSize: 80, color: '#ff6b8a', fontWeight: 'bold' },
-  brand: { fontSize: 18, color: '#fff', letterSpacing: 4, marginBottom: 40 },
-  label: {
+  title: {
+    fontSize: 32,
     color: '#fff',
-    fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 10,
-    textAlign: 'right',
-    width: '100%',
-    maxWidth: 320,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#888',
+    marginBottom: 40,
   },
   input: {
-    backgroundColor: '#1a1c23',
-    borderRadius: 10,
-    padding: 15,
+    width: '100%',
+    height: 50,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    paddingHorizontal: 15,
     color: '#fff',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#2a2d35',
+    borderColor: '#333',
     marginBottom: 20,
-    width: '100%',
-    maxWidth: 320,
   },
-  progressBox: {
+  button: {
     width: '100%',
-    maxWidth: 320,
-    marginBottom: 20,
+    height: 50,
+    backgroundColor: '#00ff88',
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  statusText: { color: '#9ca3af', marginBottom: 10, fontSize: 14 },
-  barBg: {
+  buttonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  loaderBox: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  statusText: {
+    color: '#fff',
+    marginTop: 15,
+    fontSize: 14,
+  },
+  progressContainer: {
     width: '100%',
     height: 8,
-    backgroundColor: '#2a2d35',
+    backgroundColor: '#333',
     borderRadius: 4,
+    marginTop: 10,
     overflow: 'hidden',
   },
-  barFill: {
+  progressBar: {
     height: '100%',
-    backgroundColor: '#5b8def',
+    backgroundColor: '#00ff88',
+    borderRadius: 4,
   },
-  percentText: { color: '#5b8def', marginTop: 6, fontSize: 12 },
-  button: {
-    backgroundColor: '#5b8def',
-    borderRadius: 10,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 320,
+  percentText: {
+    color: '#00ff88',
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
 export default ModeScreen;
