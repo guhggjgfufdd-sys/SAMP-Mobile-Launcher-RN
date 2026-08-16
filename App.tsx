@@ -1,30 +1,23 @@
-import React, { useEffect } from 'react';
-import { BackHandler, View, StyleSheet } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { enableScreens } from 'react-native-screens';
-import { NavigationRouter } from './src/routers/navigation-router';
-
-enableScreens(true);
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
 export default function App() {
-  useEffect(() => {
-    const backAction = () => true;
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    return () => backHandler.remove();
-  }, []);
-
   return (
-    <SafeAreaProvider>
-      <View style={styles.container}>
-        <NavigationRouter />
-      </View>
-    </SafeAreaProvider>
+    <View style={styles.container}>
+      <Text style={styles.text}>التطبيق يشتغل!</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    color: '#000000',
+    fontSize: 24,
   },
 });
