@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
-enableScreens(true);
+
+enableScreens();  // ← لازم تكون قبل أي import ثاني
 
 import { AppRegistry } from 'react-native';
 import App from './App';
