@@ -1,65 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
   Alert,
   NativeModules,
-  Platform,
 } from 'react-native';
-import RNFS from 'react-native-fs';
+import { useRoute } from '@react-navigation/native';
 
+const { GtaSetupModule } = NativeModules;
+
+// ====== غيّر هذي القيم حسب سيرفرك ======
 const SERVER_IP = '142.132.203.47';
-const SERVER_PORT = 21299;
-const PACKAGE_NAME = 'com.touch.mobile.dark';
+const SERVER_PORT = '21299';
 
-export const GameScreen = () => {
-  const [serverStatus] = useState({
-    isOnline: true,
+const GameScreen: React.FC = () => {
+  const route = useRoute<any>();
+  const username = route.params?.username || 'لاعب';
+
+  const [serverStatus, setServerStatus] = useState({
+    serverName: 'Las Venturas RP',
     playersCount: 0,
     maxPlayers: 100,
-    serverName: 'Las Venturas RP',
   });
 
   const handlePlay = async () => {
     try {
-      // 1. تجهيز مجلد samp وملف settings.ini
-      const sampPath = `${RNFS.ExternalStorageDirectoryPath}/Android/data/${PACKAGE_NAME}/files/samp`;
-      const settingsFilePath = `${sampPath}/settings.ini`;
-
-      const exists = await RNFS.exists(sampPath);
-      if (!exists) {
-        await RNFS.mkdir(sampPath);
-      }
-
-      const settingsContent = `[client]\nhost=${SERVER_IP}\nport=${SERVER_PORT}\nname=Player_Guest\nfpsfix=1\nmultiprocess=0\n`;
-      await RNFS.writeFile(settingsFilePath, settingsContent, 'utf8');
-
-      // 2. استدعاء GtaSetupModule المكتشف في سورس كود مشروعك
-      if (Platform.OS === 'android') {
-        const { GtaSetupModule } = NativeModules;
-
-        if (GtaSetupModule) {
-          if (typeof GtaSetupModule.launchGame === 'function') {
-            GtaSetupModule.launchGame();
-          } else if (typeof GtaSetupModule.startGame === 'function') {
-            GtaSetupModule.startGame();
-          } else {
-            // في حال كانت دالة التشغيل باسم آخر داخل الملف
-            const functionsList = Object.keys(GtaSetupModule).join(', ');
-            Alert.alert(
-              'معلومات الموديل',
-              `الموديل GtaSetupModule متصل بنجاح! الدوال المتاحة داخله هي:\n${functionsList}`
-            );
-          }
+      if (GtaSetupModule) {
+        if (typeof GtaSetupModule.launchGame === 'function') {
+          GtaSetupModule.launchGame();
+        } else if (typeof GtaSetupModule.startGame === 'function') {
+          GtaSetupModule.startGame();
         } else {
+          const functionsList = Object.keys(GtaSetupModule).join(', ');
           Alert.alert(
-            'خطأ',
-            'لم يتم التعرف على GtaSetupModule. تأكد من إعادة بناء التطبيق (Rebuild) بعد الحفظ.'
+            'معلومات الموبيل',
+            `متصل بنجاح! الدوال المتاحة داخل هي GtaSetupModule:\n${functionsList}`
           );
         }
+      } else {
+        Alert.alert(
+          'خطأ',
+          'لم يتم التعرف على GtaSetupModule. تأكد من إعادة بناء التطبيق (Rebuild) بعد الحفظ.'
+        );
       }
     } catch (error) {
       Alert.alert('خطأ', 'تعذر كتابة ملف الإعدادات في مجلد اللعبة.');
@@ -69,7 +54,9 @@ export const GameScreen = () => {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        
+
+        <Text style={styles.welcomeText}>مرحباً {username}</Text>
+
         <Text style={styles.sectionTitle}>أخبار المشروع</Text>
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>🔥 السيرفر يعمل الآن!</Text>
@@ -79,7 +66,7 @@ export const GameScreen = () => {
         </View>
 
         <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
-        
+
         <View style={[styles.serverCard, styles.selectedServerCard]}>
           <View style={styles.serverHeader}>
             <Text style={styles.serverName}>{serverStatus.serverName}</Text>
@@ -114,6 +101,13 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingBottom: 100,
+  },
+  welcomeText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'right',
   },
   sectionTitle: {
     color: '#FFFFFF',
