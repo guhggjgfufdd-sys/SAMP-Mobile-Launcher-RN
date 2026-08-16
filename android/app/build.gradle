@@ -2,11 +2,11 @@ apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
 
 project.ext.react = [
-    enableHermes: false,
+    enableHermes: true,
     bundleInRelease: true,
 ]
 
-project.ext.hermesEnabled = false
+project.ext.hermesEnabled = true
 def enableSeparateBuildPerCPUArchitecture = false
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
@@ -78,6 +78,7 @@ android {
     packagingOptions {
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
+        pickFirst '**/libhermes.so'
     }
 }
 
