@@ -3,10 +3,10 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 reactNativeDir = file("../../node_modules/react-native")
- codegenDir = file("../../node_modules/@react-native/codegen")
- cliFile = file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
+codegenDir = file("../../node_modules/@react-native/codegen")
+cliFile = file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
 
-def enableHermes = false  // ← خلّيه false عشان JSC (أكثر استقراراً لهذا المشروع)
+def enableHermes = false
 
 android {
     namespace "com.touch.mobile.dark"
@@ -16,8 +16,8 @@ android {
         applicationId "com.touch.mobile.dark"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11        // ← زِد الرقم مع كل نسخة
-        versionName "2.11"    // ← يطابق رقم الإصدار اللي بالصور
+        versionCode 11
+        versionName "2.11"
     }
 
     signingConfigs {
@@ -36,15 +36,13 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            // ← لا تضف debuggable true في Release أبداً
         }
     }
 }
 
 dependencies {
     implementation("com.facebook.react:react-android")
-    
-    // ← اختر واحد بس: JSC (أو Hermes لو حاب تغيّر)
+
     if (!enableHermes) {
         implementation 'org.webkit:android-jsc:+'
     } else {
