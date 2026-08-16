@@ -37,7 +37,6 @@ const SettingsScreen = () => {
   const [reduceGfx, setReduceGfx] = useState(false);
   const [gpuRenderer, setGpuRenderer] = useState('default');
 
-  // تحميل كل الإعدادات من AsyncStorage
   useEffect(() => {
     let mounted = true;
     const loadAll = async () => {
@@ -107,7 +106,7 @@ const SettingsScreen = () => {
         />
 
         <Row label="خريطة الشتاء" val={winterMap} set={(v) => { setWinterMap(v); save(KEYS.winterMap, v); }} />
-        <Row label="الجرافيك المحسن" val={enhancedGraphics} set={(v) => { setEnhancedGraphics(v); save(KEYS.enhancedGraphics, v); }} />
+        <Row label="الجرافيكس المحسن" val={enhancedGraphics} set={(v) => { setEnhancedGraphics(v); save(KEYS.enhancedGraphics, v); }} />
         <Row label="عداد الـ FPS" val={fpsCounter} set={(v) => { setFpsCounter(v); save(KEYS.fpsCounter, v); }} />
         <Row label="لوحة مفاتيح أندرويد" val={androidKeyboard} set={(v) => { setAndroidKeyboard(v); save(KEYS.androidKeyboard, v); }} />
 
