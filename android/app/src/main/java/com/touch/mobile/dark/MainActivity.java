@@ -17,7 +17,7 @@ public class MainActivity extends ReactActivity {
 
     @Override
     protected String getMainComponentName() {
-        return "SAMP-Mobile-Launcher-RN";
+        return "TouchMobile"; // غيرنا ليطابق app.json
     }
 
     @Override
@@ -25,6 +25,6 @@ public class MainActivity extends ReactActivity {
         return new DefaultReactActivityDelegate(
                 this,
                 getMainComponentName(),
-                false); // غيرنا من getFabricEnabled() إلى false عشان نتجنب مشاكل New Architecture
+                false);
     }
 }
