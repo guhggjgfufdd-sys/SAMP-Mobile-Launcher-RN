@@ -1,4 +1,4 @@
-import { safeGetItem, safeSetItem } from '../../utils/storage';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { safeGetItem, safeSetItem } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
   nickname: '@samp_nickname',
@@ -22,6 +22,24 @@ const KEYS = {
   compatMode: '@samp_compat_mode',
   reduceGfx: '@samp_reduce_graphics',
   gpuRenderer: '@samp_gpu_renderer',
+};
+
+const getItem = async (key: string, defaultValue: any) => {
+  try {
+    const item = await AsyncStorage.getItem(key);
+    if (item === null || item === '') return defaultValue;
+    return JSON.parse(item);
+  } catch {
+    return defaultValue;
+  }
+};
+
+const setItem = async (key: string, value: any) => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 const SettingsScreen = () => {
@@ -40,46 +58,35 @@ const SettingsScreen = () => {
   useEffect(() => {
     let mounted = true;
     const loadAll = async () => {
-      try {
-        const [
-          n, wm, eg, fc, ak, fl, cl, cm, rg, gr
-        ] = await Promise.all([
-          safeGetItem<string>(KEYS.nickname, ''),
-          safeGetItem<boolean>(KEYS.winterMap, false),
-          safeGetItem<boolean>(KEYS.enhancedGraphics, false),
-          safeGetItem<boolean>(KEYS.fpsCounter, false),
-          safeGetItem<boolean>(KEYS.androidKeyboard, true),
-          safeGetItem<number>(KEYS.fpsLimit, 60),
-          safeGetItem<number>(KEYS.chatLines, 5),
-          safeGetItem<boolean>(KEYS.compatMode, false),
-          safeGetItem<boolean>(KEYS.reduceGfx, false),
-          safeGetItem<string>(KEYS.gpuRenderer, 'default'),
-        ]);
-
-        if (!mounted) return;
-        setNickname(n);
-        setWinterMap(wm);
-        setEnhancedGraphics(eg);
-        setFpsCounter(fc);
-        setAndroidKeyboard(ak);
-        setFpsLimit(fl);
-        setChatLines(cl);
-        setCompatMode(cm);
-        setReduceGfx(rg);
-        setGpuRenderer(gr);
-      } catch (e) {
-        console.error('Failed to load settings:', e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
+      const n = await getItem(KEYS.nickname, '');
+      const wm = await getItem(KEYS.winterMap, false);
+      const eg = await getItem(KEYS.enhancedGraphics, false);
+      const fc = await getItem(KEYS.fpsCounter, false);
+      const ak = await getItem(KEYS.androidKeyboard, true);
+      const fl = await getItem(KEYS.fpsLimit, 60);
+      const cl = await getItem(KEYS.chatLines, 5);
+      const cm = await getItem(KEYS.compatMode, false);
+      const rg = await getItem(KEYS.reduceGfx, false);
+      const gr = await getItem(KEYS.gpuRenderer, 'default');
+      if (!mounted) return;
+      setNickname(n);
+      setWinterMap(wm);
+      setEnhancedGraphics(eg);
+      setFpsCounter(fc);
+      setAndroidKeyboard(ak);
+      setFpsLimit(fl);
+      setChatLines(cl);
+      setCompatMode(cm);
+      setReduceGfx(rg);
+      setGpuRenderer(gr);
+      setLoading(false);
     };
-
     loadAll();
     return () => { mounted = false; };
   }, []);
 
   const save = async (key: string, value: any) => {
-    await safeSetItem(key, value);
+    await setItem(key, value);
   };
 
   if (loading) {
@@ -177,12 +184,7 @@ const SettingsScreen = () => {
 const Row = ({ label, val, set }: { label: string; val: boolean; set: (v: boolean) => void }) => (
   <View style={styles.row}>
     <Text style={styles.label}>{label}</Text>
-    <Switch
-      value={val}
-      onValueChange={set}
-      trackColor={{ false: '#333', true: '#4A90D9' }}
-      thumbColor={val ? '#fff' : '#888'}
-    />
+    <Switch value={val} onValueChange={set} trackColor={{ false: '#333', true: '#4A90D9' }} thumbColor={val ? '#fff' : '#888'} />
   </View>
 );
 
