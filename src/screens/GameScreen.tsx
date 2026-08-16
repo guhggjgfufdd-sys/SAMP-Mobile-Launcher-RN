@@ -1,93 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  NativeModules,
-} from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import React from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { RootStackParamList } from '../navigation/navigation-router';
 
-const { GtaSetupModule } = NativeModules;
+type GameScreenRoute = RouteProp<RootStackParamList, 'Game'>;
 
-// ====== غيّر هذي القيم حسب سيرفرك ======
-const SERVER_IP = '142.132.203.47';
-const SERVER_PORT = '21299';
+const SERVERS = [
+  { id: '1', name: 'Server 1 - Roleplay', ip: '127.0.0.1:7777', players: '45/100' },
+  { id: '2', name: 'Server 2 - DM', ip: '127.0.0.2:7777', players: '12/50' },
+  { id: '3', name: 'Server 3 - TDM', ip: '127.0.0.3:7777', players: '78/200' },
+];
 
-const GameScreen: React.FC = () => {
-  const route = useRoute<any>();
-  const username = route.params?.username || 'لاعب';
+const GameScreen = () => {
+  const route = useRoute<GameScreenRoute>();
+  const reduxUsername = useSelector((state: RootState) => state.user.username);
+  const username = route.params?.username || reduxUsername || 'Player';
 
-  const [serverStatus, setServerStatus] = useState({
-    serverName: 'Las Venturas RP',
-    playersCount: 0,
-    maxPlayers: 100,
-  });
-
-  const handlePlay = async () => {
-    try {
-      if (GtaSetupModule) {
-        if (typeof GtaSetupModule.launchGame === 'function') {
-          GtaSetupModule.launchGame();
-        } else if (typeof GtaSetupModule.startGame === 'function') {
-          GtaSetupModule.startGame();
-        } else {
-          const functionsList = Object.keys(GtaSetupModule).join(', ');
-          Alert.alert(
-            'معلومات الموبيل',
-            `متصل بنجاح! الدوال المتاحة داخل هي GtaSetupModule:\n${functionsList}`
-          );
-        }
-      } else {
-        Alert.alert(
-          'خطأ',
-          'لم يتم التعرف على GtaSetupModule. تأكد من إعادة بناء التطبيق (Rebuild) بعد الحفظ.'
-        );
-      }
-    } catch (error) {
-      Alert.alert('خطأ', 'تعذر كتابة ملف الإعدادات في مجلد اللعبة.');
-    }
-  };
+  const renderServer = ({ item }: { item: typeof SERVERS[0] }) => (
+    <TouchableOpacity style={styles.serverCard} activeOpacity={0.8}>
+      <View style={styles.serverInfo}>
+        <Text style={styles.serverName}>{item.name}</Text>
+        <Text style={styles.serverIp}>{item.ip}</Text>
+      </View>
+      <View style={styles.playersBadge}>
+        <Text style={styles.playersText}>{item.players}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <Text style={styles.header}>قائمة السيرفرات</Text>
+      <Text style={styles.welcome}>مرحباً، {username} 👋</Text>
 
-        <Text style={styles.welcomeText}>مرحباً {username}</Text>
-
-        <Text style={styles.sectionTitle}>أخبار المشروع</Text>
-        <View style={styles.newsCard}>
-          <Text style={styles.newsTitle}>🔥 السيرفر يعمل الآن!</Text>
-          <Text style={styles.newsDescription}>
-            اضغط على "بدء اللعب" للانضمام مباشرة إلى السيرفر الخاص بك.
-          </Text>
-        </View>
-
-        <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
-
-        <View style={[styles.serverCard, styles.selectedServerCard]}>
-          <View style={styles.serverHeader}>
-            <Text style={styles.serverName}>{serverStatus.serverName}</Text>
-            <Text style={styles.statusOnline}>متصل 🟢</Text>
-          </View>
-
-          <Text style={styles.serverIp}>
-            {SERVER_IP}:{SERVER_PORT}
-          </Text>
-
-          <View style={styles.serverFooter}>
-            <Text style={styles.playersText}>
-              اللاعبين: {serverStatus.playersCount} / {serverStatus.maxPlayers}
-            </Text>
-            <TouchableOpacity style={styles.btnPlay} onPress={handlePlay}>
-              <Text style={styles.btnPlayText}>▶ بدء اللعب</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-      </ScrollView>
+      <FlatList
+        data={SERVERS}
+        keyExtractor={(item) => item.id}
+        renderItem={renderServer}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
@@ -95,100 +49,60 @@ const GameScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#12131C',
-    paddingHorizontal: 20,
+    backgroundColor: '#0d0d0d',
     paddingTop: 50,
+    paddingHorizontal: 16,
   },
-  scrollContainer: {
-    paddingBottom: 100,
-  },
-  welcomeText: {
-    color: '#FFFFFF',
-    fontSize: 18,
+  header: {
+    fontSize: 28,
+    color: '#fff',
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'right',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 12,
-    textAlign: 'right',
+  welcome: {
+    fontSize: 14,
+    color: '#00ff88',
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  newsCard: {
-    backgroundColor: '#1E202F',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2A2D43',
-  },
-  newsTitle: {
-    color: '#6B8AFD',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    textAlign: 'right',
-  },
-  newsDescription: {
-    color: '#A0A5BA',
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'right',
+  list: {
+    paddingBottom: 30,
   },
   serverCard: {
-    backgroundColor: '#1E202F',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#2A2D43',
-  },
-  selectedServerCard: {
-    borderColor: '#6B8AFD',
-    backgroundColor: '#23263B',
-  },
-  serverHeader: {
-    flexDirection: 'row-reverse',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  serverInfo: {
+    flex: 1,
   },
   serverName: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
-  },
-  statusOnline: {
-    color: '#4CAF50',
-    fontSize: 12,
-    fontWeight: 'bold',
+    marginBottom: 4,
   },
   serverIp: {
-    color: '#8A8FAD',
+    color: '#888',
     fontSize: 13,
-    marginTop: 6,
-    textAlign: 'right',
   },
-  serverFooter: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 15,
+  playersBadge: {
+    backgroundColor: '#00ff88',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   playersText: {
-    color: '#A0A5BA',
-    fontSize: 13,
-  },
-  btnPlay: {
-    backgroundColor: '#6B8AFD',
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-  },
-  btnPlayText: {
-    color: '#FFFFFF',
+    color: '#000',
     fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: 12,
   },
 });
 
