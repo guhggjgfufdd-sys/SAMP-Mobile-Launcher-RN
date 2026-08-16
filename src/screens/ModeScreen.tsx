@@ -65,15 +65,12 @@ const ModeScreen = () => {
       setStatus('جاري التحميل...');
       setProgress(0);
 
-      // تأكد من وجود المجلد
       await RNFS.mkdir(SAMP_DIR);
 
-      // حذف الملف القديم لو موجود
       if (await RNFS.exists(ZIP_PATH)) {
         await RNFS.unlink(ZIP_PATH);
       }
 
-      // تحميل الملف مع شريط تقدم حقيقي
       const download = RNFS.downloadFile({
         fromUrl: CACHE_URL,
         toFile: ZIP_PATH,
@@ -86,19 +83,13 @@ const ModeScreen = () => {
         },
       });
 
-      const result = download.promise;
-      await result;
+      await download.promise;
 
       setStatus('جاري فك الضغط...');
       setProgress(100);
 
-      // فك الضغط
       await unzip(ZIP_PATH, SAMP_DIR);
-
-      // إنشاء ملف التحقق
       await RNFS.writeFile(EXTRACTED_FLAG, 'extracted', 'utf8');
-
-      // حذف الـ ZIP بعد الفك
       await RNFS.unlink(ZIP_PATH);
 
       setStatus('تم ✅');
@@ -140,7 +131,7 @@ const ModeScreen = () => {
       ) : (
         <TouchableOpacity style={styles.button} onPress={handleStart}>
           <Text style={styles.buttonText}>
-            {RNFS.exists(EXTRACTED_FLAG) ? 'دخول للسيرفرات' : 'تحميل الكاش والدخول'}
+            {status.includes('جاهز') ? 'دخول للسيرفرات' : 'تحميل الكاش والدخول'}
           </Text>
         </TouchableOpacity>
       )}
