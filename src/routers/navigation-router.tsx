@@ -1,154 +1,76 @@
+import React, { useEffect, useState } from 'react';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
-import { StatusBar, View } from 'react-native';
+import { StatusBar, View, StyleSheet } from 'react-native';
 import RNBootSplash from 'react-native-bootsplash';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as Icons from '../assets/svg';
-import { setModeType } from '../actions/settingsActions';
-import { useAppDispatch } from '../hooks/useAppDispatch';
-import { DonateScreen } from '../screens/DonateScreen';
-import { ErrorScreen } from '../screens/ErrorScreen';
-import { GameScreen } from '../screens/GameScreen';
-import { InitiationScreen } from '../screens/InitiationScreen';
-import { DownloadScreen } from '../screens/LoaderScreen/DownloadScreen';
-import { DownloadStartScreen } from '../screens/LoaderScreen/DownloadStartScreen';
-import { LauncherDownloadScreen } from '../screens/LoaderScreen/LauncherDownloadScreen';
-import { LauncherUpdateScreen } from '../screens/LoaderScreen/LauncherUpdateScreen';
-import { UpdateScreen } from '../screens/LoaderScreen/UpdateScreen';
-import { UpdateStartScreen } from '../screens/LoaderScreen/UpdateStartScreen';
-import { ModeScreen } from '../screens/ModeScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
-import { navigationRef } from './RootNavigation';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useAppDispatch } from '../hooks';
+import { setModeType } from '../actions';
+
+// استورد شاشاتك هنا حسب مشروعك
+// import ModeScreen from '../screens/ModeScreen';
+// import HomeScreen from '../screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
-const Tabs = createBottomTabNavigator();
+const Tab = createBottomTabNavigator();
 
-export const NavigationRouter = React.memo(() => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isModeType, setIsModeType] = useState<boolean>(false);
+const MyTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#0b0c10',
+    card: '#1a1c23',
+    text: '#ffffff',
+    border: '#2a2d35',
+    primary: '#5b8def',
+  },
+};
+
+const NavigationRouter = () => {
   const dispatch = useAppDispatch();
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('modeType')
-      .then((res) => {
-        if (res !== null) {
-          dispatch(setModeType(+res));
-          setIsModeType(true);
-        }
-      })
-      .catch(() => {
-        setIsModeType(false);
-      })
-      .finally(() => {
-        setIsLoading(true);
-      });
-  }, []);
+    // إخفاء Splash Screen بعد ما يجهز النظام
+    const init = async () => {
+      try {
+        // أي تهيئة تبيها (Redox persist مثلاً)
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } finally {
+        setIsReady(true);
+        await RNBootSplash.hide({ fade: true });
+      }
+    };
 
-  if (!isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000000' }} />
-    );
+    init();
+  }, [dispatch]);
+
+  if (!isReady) {
+    return null; // أو شاشة loading
   }
 
   return (
-    <NavigationContainer
-      onReady={() => RNBootSplash.hide({ fade: true })}
-      ref={navigationRef}
-      theme={DefaultTheme}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar translucent backgroundColor="transparent" />
+    <GestureHandlerRootView style={styles.flex}>
+      <SafeAreaProvider>
         <BottomSheetModalProvider>
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              headerTransparent: true,
-              gestureEnabled: false,
-              animationTypeForReplace: 'push',
-              animationDuration: 350,
-            }}
-            initialRouteName={isModeType ? 'Initiation' : 'ModeScreen'}>
-            <Stack.Screen name="Main" component={TabBarNavigation} />
-            <Stack.Screen name="Error" component={ErrorScreen} />
-            <Stack.Screen name="Initiation" component={InitiationScreen} />
-            <Stack.Screen name="ModeScreen" component={ModeScreen} />
-            <Stack.Screen name="UpdateScreen" component={UpdateScreen} />
-            <Stack.Screen
-              name="UpdateStartScreen"
-              component={UpdateStartScreen}
-            />
-            <Stack.Screen name="DownloadScreen" component={DownloadScreen} />
-            <Stack.Screen
-              name="DownloadStartScreen"
-              component={DownloadStartScreen}
-            />
-            <Stack.Screen
-              name="LauncherDownloadScreen"
-              component={LauncherDownloadScreen}
-            />
-            <Stack.Screen
-              name="LauncherUpdateScreen"
-              component={LauncherUpdateScreen}
-            />
-          </Stack.Navigator>
+          <NavigationContainer theme={MyTheme}>
+            <StatusBar barStyle="light-content" backgroundColor="#0b0c10" />
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Mode" component={ModeScreen} />
+              {/* أضف باقي الشاشات هنا */}
+            </Stack.Navigator>
+          </NavigationContainer>
         </BottomSheetModalProvider>
-      </GestureHandlerRootView>
-    </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
+};
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
 });
 
-export const TabBarNavigation = React.memo(() => {
-  return (
-    <Tabs.Navigator
-      initialRouteName="الرئيسية"
-      backBehavior="initialRoute"
-      screenOptions={{
-        tabBarActiveTintColor: '#ffffff',
-        tabBarInactiveTintColor: '#b6c4ee7f',
-        tabBarActiveBackgroundColor: '#6b8afd',
-        tabBarStyle: {
-          backgroundColor: '#212231',
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-      }}>
-      <Tabs.Screen
-        name="المبرمج"
-        component={DonateScreen}
-        options={{
-          headerShown: true,
-          headerTransparent: true,
-          tabBarIcon: ({ color, size }: any) => (
-            <Icons.WalletSvg width={size} height={size} fill={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="الرئيسية"
-        component={GameScreen}
-        options={{
-          headerShown: true,
-          headerTransparent: true,
-          tabBarIcon: ({ color, size }: any) => (
-            <Icons.PlaySvg width={size} height={size} fill={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="الإعدادات"
-        component={SettingsScreen}
-        options={{
-          headerShown: true,
-          headerTransparent: true,
-          tabBarIcon: ({ color, size }: any) => (
-            <Icons.SettingSvg width={size} height={size} fill={color} />
-          ),
-        }}
-      />
-    </Tabs.Navigator>
-  );
-});
+export default NavigationRouter;
