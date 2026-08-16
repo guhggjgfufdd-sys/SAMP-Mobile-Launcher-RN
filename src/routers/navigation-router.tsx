@@ -4,10 +4,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import RNBootSplash from 'react-native-bootsplash';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Icons from '../assets/svg';
 import { setModeType } from '../actions/settingsActions';
 import { useAppDispatch } from '../hooks/useAppDispatch';
@@ -50,55 +49,55 @@ export const NavigationRouter = React.memo(() => {
   }, []);
 
   if (!isLoading) {
-    return <></>;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000000' }} />
+    );
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer
-        onReady={() => RNBootSplash.hide()}
-        ref={navigationRef}
-        theme={DarkTheme}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <StatusBar translucent backgroundColor="transparent" />
-          <BottomSheetModalProvider>
-            <Stack.Navigator
-              screenOptions={{
-                headerShown: false,
-                headerTransparent: true,
-                gestureEnabled: false,
-                animationTypeForReplace: 'push',
-                animationDuration: 350,
-                animation: 'flip',
-              }}
-              initialRouteName={isModeType ? 'Initiation' : 'ModeScreen'}>
-              <Stack.Screen name="Main" component={TabBarNavigation} />
-              <Stack.Screen name="Error" component={ErrorScreen} />
-              <Stack.Screen name="Initiation" component={InitiationScreen} />
-              <Stack.Screen name="ModeScreen" component={ModeScreen} />
-              <Stack.Screen name="UpdateScreen" component={UpdateScreen} />
-              <Stack.Screen
-                name="UpdateStartScreen"
-                component={UpdateStartScreen}
-              />
-              <Stack.Screen name="DownloadScreen" component={DownloadScreen} />
-              <Stack.Screen
-                name="DownloadStartScreen"
-                component={DownloadStartScreen}
-              />
-              <Stack.Screen
-                name="LauncherDownloadScreen"
-                component={LauncherDownloadScreen}
-              />
-              <Stack.Screen
-                name="LauncherUpdateScreen"
-                component={LauncherUpdateScreen}
-              />
-            </Stack.Navigator>
-          </BottomSheetModalProvider>
-        </GestureHandlerRootView>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <NavigationContainer
+      onReady={() => RNBootSplash.hide()}
+      ref={navigationRef}
+      theme={DarkTheme}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar translucent backgroundColor="transparent" />
+        <BottomSheetModalProvider>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              headerTransparent: true,
+              gestureEnabled: false,
+              animationTypeForReplace: 'push',
+              animationDuration: 350,
+              animation: 'flip',
+            }}
+            initialRouteName={isModeType ? 'Initiation' : 'ModeScreen'}>
+            <Stack.Screen name="Main" component={TabBarNavigation} />
+            <Stack.Screen name="Error" component={ErrorScreen} />
+            <Stack.Screen name="Initiation" component={InitiationScreen} />
+            <Stack.Screen name="ModeScreen" component={ModeScreen} />
+            <Stack.Screen name="UpdateScreen" component={UpdateScreen} />
+            <Stack.Screen
+              name="UpdateStartScreen"
+              component={UpdateStartScreen}
+            />
+            <Stack.Screen name="DownloadScreen" component={DownloadScreen} />
+            <Stack.Screen
+              name="DownloadStartScreen"
+              component={DownloadStartScreen}
+            />
+            <Stack.Screen
+              name="LauncherDownloadScreen"
+              component={LauncherDownloadScreen}
+            />
+            <Stack.Screen
+              name="LauncherUpdateScreen"
+              component={LauncherUpdateScreen}
+            />
+          </Stack.Navigator>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </NavigationContainer>
   );
 });
 
@@ -119,7 +118,7 @@ export const TabBarNavigation = React.memo(() => {
         },
       }}>
       <Tabs.Screen
-        name="المتجر"
+        name="المبرمج"
         component={DonateScreen}
         options={{
           headerShown: true,
