@@ -1,144 +1,345 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TextInput, Switch, TouchableOpacity,
-  StyleSheet, ScrollView, Alert,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  Alert,
+  ActivityIndicator,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-const SettingsScreen = () => {
-  const [nickname, setNickname] = useState('');
-  const [winterMap, setWinterMap] = useState(false);
-  const [enhancedGraphics, setEnhancedGraphics] = useState(false);
-  const [fpsCounter, setFpsCounter] = useState(false);
-  const [androidKeyboard, setAndroidKeyboard] = useState(true);
-  const [fpsLimit, setFpsLimit] = useState(60);
-  const [chatLines, setChatLines] = useState(5);
-  const [compatMode, setCompatMode] = useState(false);
-  const [reduceGfx, setReduceGfx] = useState(false);
-  const [gpuRenderer, setGpuRenderer] = useState('default');
+const SETTINGS_KEY = '@samp_launcher_settings';
+const CACHE_CLEARED_KEY = '@samp_cache_cleared';
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const n = await AsyncStorage.getItem('@samp_nickname');
-        if (n !== null) setNickname(n);
-      } catch (e) {}
-    })();
+interface Settings {
+  lowGraphics: boolean;
+  hideHeadshot: boolean;
+  darkMode: boolean;
+  soundEnabled: boolean;
+  playerName: string;
+  language: string;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  lowGraphics: false,
+  hideHeadshot: false,
+  darkMode: true,
+  soundEnabled: true,
+  playerName: '',
+  language: 'ar',
+};
+
+const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // تحميل الإعدادات من AsyncStorage مع حماية كاملة
+  const loadSettings = useCallback(async () => {
+    try {
+      setLoading(true);
+      const stored = await AsyncStorage.getItem(SETTINGS_KEY);
+      
+      if (stored !== null && stored !== '') {
+        try {
+          const parsed = JSON.parse(stored);
+          // نتأكد أن كل القيم موجودة
+          setSettings({
+            lowGraphics: parsed.lowGraphics ?? DEFAULT_SETTINGS.lowGraphics,
+            hideHeadshot: parsed.hideHeadshot ?? DEFAULT_SETTINGS.hideHeadshot,
+            darkMode: parsed.darkMode ?? DEFAULT_SETTINGS.darkMode,
+            soundEnabled: parsed.soundEnabled ?? DEFAULT_SETTINGS.soundEnabled,
+            playerName: parsed.playerName ?? DEFAULT_SETTINGS.playerName,
+            language: parsed.language ?? DEFAULT_SETTINGS.language,
+          });
+        } catch (parseError) {
+          console.error('Error parsing settings:', parseError);
+          // إذا كان الملف تالف نرجع للافتراضي
+          setSettings(DEFAULT_SETTINGS);
+          await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+        }
+      } else {
+        // أول مرة يفتح التطبيق
+        setSettings(DEFAULT_SETTINGS);
+        await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      setSettings(DEFAULT_SETTINGS);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const save = async (key, value) => {
-    try { await AsyncStorage.setItem(key, String(value)); } catch (e) {}
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [loadSettings])
+  );
+
+  // حفظ الإعدادات
+  const saveSettings = async (newSettings: Settings) => {
+    try {
+      setSaving(true);
+      setSettings(newSettings);
+      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      Alert.alert('خطأ', 'فشل في حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const toggleSetting = (key: keyof Settings) => {
+    const updated = { ...settings, [key]: !settings[key] };
+    saveSettings(updated);
+  };
+
+  const clearCache = async () => {
+    Alert.alert(
+      'مسح الكاش',
+      'هل أنت متأكد أنك تريد مسح ذاكرة التخزين المؤقت؟ ستحتاج لإعادة التحميل.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'مسح',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // نمسح كل الكاش ما عدا الإعدادات
+              const keys = await AsyncStorage.getAllKeys();
+              const keysToRemove = keys.filter(k => k !== SETTINGS_KEY);
+              if (keysToRemove.length > 0) {
+                await AsyncStorage.multiRemove(keysToRemove);
+              }
+              
+              await AsyncStorage.setItem(CACHE_CLEARED_KEY, 'true');
+              
+              if (Platform.OS === 'android') {
+                ToastAndroid.show('تم مسح الكاش بنجاح', ToastAndroid.SHORT);
+              }
+            } catch (error) {
+              console.error('Error clearing cache:', error);
+              Alert.alert('خطأ', 'فشل في مسح الكاش');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>الإعدادات</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5b8def" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scroll}>
-        <Text style={styles.header}>الإعدادات</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>الإعدادات</Text>
+        {saving && <ActivityIndicator size="small" color="#5b8def" style={styles.savingIndicator} />}
+      </View>
 
-        <Text style={styles.label}>الاسم في اللعبة</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="مثال: Don_Corleone"
-          placeholderTextColor="#666"
-          value={nickname}
-          onChangeText={(t) => { setNickname(t); save('@samp_nickname', t); }}
-          autoCapitalize="none"
-        />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* إعدادات الرسوميات */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>الرسوميات والأداء</Text>
+          
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>تقليل الجرافيكس</Text>
+              <Text style={styles.settingDesc}>يقلل الجودة لتحسين الأداء</Text>
+            </View>
+            <Switch
+              value={settings.lowGraphics}
+              onValueChange={() => toggleSetting('lowGraphics')}
+              trackColor={{ false: '#374151', true: '#5b8def' }}
+              thumbColor={settings.lowGraphics ? '#ffffff' : '#9ca3af'}
+            />
+          </View>
 
-        <Row label="خريطة الشتاء" val={winterMap} set={(v) => { setWinterMap(v); save('@samp_winter_map', v); }} />
-        <Row label="الجرافيك المحسن" val={enhancedGraphics} set={(v) => { setEnhancedGraphics(v); save('@samp_enhanced_graphics', v); }} />
-        <Row label="عداد الـ FPS" val={fpsCounter} set={(v) => { setFpsCounter(v); save('@samp_fps_counter', v); }} />
-        <Row label="لوحة مفاتيح أندرويد" val={androidKeyboard} set={(v) => { setAndroidKeyboard(v); save('@samp_android_keyboard', v); }} />
-
-        <View style={styles.divider} />
-
-        <View style={styles.row}>
-          <Text style={styles.label}>FPS: {fpsLimit}</Text>
-          <View style={styles.counter}>
-            <TouchableOpacity style={styles.btn} onPress={() => { const v = Math.min(fpsLimit + 5, 120); setFpsLimit(v); save('@samp_fps_limit', v); }}>
-              <Text style={styles.btnText}>+</Text>
-            </TouchableOpacity>
-            <Text style={styles.val}>{fpsLimit}</Text>
-            <TouchableOpacity style={styles.btn} onPress={() => { const v = Math.max(fpsLimit - 5, 20); setFpsLimit(v); save('@samp_fps_limit', v); }}>
-              <Text style={styles.btnText}>-</Text>
-            </TouchableOpacity>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>إخفاء الهيد شوت</Text>
+              <Text style={styles.settingDesc}>إخفاء تأثيرات الرأس</Text>
+            </View>
+            <Switch
+              value={settings.hideHeadshot}
+              onValueChange={() => toggleSetting('hideHeadshot')}
+              trackColor={{ false: '#374151', true: '#5b8def' }}
+              thumbColor={settings.hideHeadshot ? '#ffffff' : '#9ca3af'}
+            />
           </View>
         </View>
 
-        <View style={styles.row}>
-          <Text style={styles.label}>أسطر الدردشة: {chatLines}</Text>
-          <View style={styles.counter}>
-            <TouchableOpacity style={styles.btn} onPress={() => { const v = Math.min(chatLines + 1, 10); setChatLines(v); save('@samp_chat_lines', v); }}>
-              <Text style={styles.btnText}>+</Text>
-            </TouchableOpacity>
-            <Text style={styles.val}>{chatLines}</Text>
-            <TouchableOpacity style={styles.btn} onPress={() => { const v = Math.max(chatLines - 1, 1); setChatLines(v); save('@samp_chat_lines', v); }}>
-              <Text style={styles.btnText}>-</Text>
-            </TouchableOpacity>
+        {/* إعدادات الصوت والوضع */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>الصوت والعرض</Text>
+          
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>الوضع الليلي</Text>
+              <Text style={styles.settingDesc}>تفعيل الثيم الداكن</Text>
+            </View>
+            <Switch
+              value={settings.darkMode}
+              onValueChange={() => toggleSetting('darkMode')}
+              trackColor={{ false: '#374151', true: '#5b8def' }}
+              thumbColor={settings.darkMode ? '#ffffff' : '#9ca3af'}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>تفعيل الصوت</Text>
+              <Text style={styles.settingDesc}>تشغيل المؤثرات الصوتية</Text>
+            </View>
+            <Switch
+              value={settings.soundEnabled}
+              onValueChange={() => toggleSetting('soundEnabled')}
+              trackColor={{ false: '#374151', true: '#5b8def' }}
+              thumbColor={settings.soundEnabled ? '#ffffff' : '#9ca3af'}
+            />
           </View>
         </View>
 
-        <View style={styles.divider} />
-
-        <Text style={styles.section}>⚡ حلول الشاشة السوداء</Text>
-
-        <Row label="وضع التوافق" val={compatMode} set={(v) => { setCompatMode(v); save('@samp_compat_mode', v); }} />
-        <Row label="تقليل الجرافيكس" val={reduceGfx} set={(v) => { setReduceGfx(v); save('@samp_reduce_graphics', v); }} />
-
-        <Text style={styles.label}>محرك الرسوميات:</Text>
-        <View style={styles.gpuBox}>
-          {['default', 'opengl', 'vulkan'].map((r) => (
-            <TouchableOpacity key={r} style={[styles.gpuBtn, gpuRenderer === r && styles.gpuOn]}
-              onPress={() => { setGpuRenderer(r); save('@samp_gpu_renderer', r); }}>
-              <Text style={gpuRenderer === r ? styles.gpuTxtOn : styles.gpuTxt}>
-                {r === 'default' ? 'تلقائي' : r === 'opengl' ? 'OpenGL' : 'Vulkan'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* إعدادات متقدمة */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>متقدم</Text>
+          
+          <TouchableOpacity style={styles.buttonItem} onPress={clearCache}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>مسح ذاكرة التخزين المؤقت</Text>
+              <Text style={styles.settingDesc}>سيتم حذف ملفات الكاش وإعادة التحميل</Text>
+            </View>
+            <Text style={styles.buttonText}>مسح</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.tip}>
-          <Text style={{ color: '#4A90D9', fontWeight: 'bold' }}>💡 نصائح:</Text>
-          <Text style={styles.tipTxt}>• اطفئ الجرافيك المحسن</Text>
-          <Text style={styles.tipTxt}>• خفف FPS لـ 30</Text>
-          <Text style={styles.tipTxt}>• شغل وضع التوافق</Text>
-          <Text style={styles.tipTxt}>• اختر OpenGL</Text>
+        {/* معلومات */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>SAMP Mobile Launcher v1.0</Text>
         </View>
-
-        <Text style={styles.ver}>v1.0.0</Text>
       </ScrollView>
     </View>
   );
 };
 
-const Row = ({ label, val, set }) => (
-  <View style={styles.row}>
-    <Text style={styles.label}>{label}</Text>
-    <Switch value={val} onValueChange={set} trackColor={{ false: '#333', true: '#4A90D9' }} thumbColor={val ? '#fff' : '#f4f3f4'} />
-  </View>
-);
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
-  scroll: { flex: 1, padding: 20 },
-  header: { fontSize: 28, color: '#fff', textAlign: 'center', marginBottom: 20, fontWeight: 'bold' },
-  section: { fontSize: 18, color: '#4A90D9', marginVertical: 10, fontWeight: 'bold' },
-  label: { color: '#fff', fontSize: 16, marginBottom: 8 },
-  input: { backgroundColor: '#16213e', color: '#fff', borderRadius: 12, padding: 15, fontSize: 16, marginBottom: 20, textAlign: 'right' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
-  divider: { height: 1, backgroundColor: '#333', marginVertical: 15 },
-  counter: { flexDirection: 'row', alignItems: 'center' },
-  btn: { backgroundColor: '#4A90D9', width: 40, height: 40, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginHorizontal: 5 },
-  btnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  val: { color: '#fff', fontSize: 18, width: 40, textAlign: 'center' },
-  gpuBox: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
-  gpuBtn: { backgroundColor: '#16213e', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8, borderWidth: 1, borderColor: '#333' },
-  gpuOn: { backgroundColor: '#4A90D9', borderColor: '#4A90D9' },
-  gpuTxt: { color: '#aaa' },
-  gpuTxtOn: { color: '#fff', fontWeight: 'bold' },
-  tip: { backgroundColor: '#16213e', borderRadius: 12, padding: 15, marginTop: 15 },
-  tipTxt: { color: '#aaa', fontSize: 13, marginTop: 4 },
-  ver: { color: '#555', textAlign: 'center', marginTop: 30, marginBottom: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#0b0c10',
+  },
+  header: {
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: '#0b0c10',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1c23',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  savingIndicator: {
+    marginLeft: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9ca3af',
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1a1c23',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2a2d36',
+  },
+  settingInfo: {
+    flex: 1,
+    alignItems: 'flex-end',
+    marginRight: 12,
+  },
+  settingLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  settingDesc: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  buttonItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1a1c23',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2a2d36',
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#5b8def',
+  },
+  footer: {
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
 });
 
 export default SettingsScreen;
