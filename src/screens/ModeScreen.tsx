@@ -11,11 +11,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { unzip } from 'react-native-zip-archive';
 
-// ====== غيّر هذي القيم حسب مشروعك ======
-const CACHE_URL = 'https://your-server.com/samp-cache.zip'; // ← رابط ملف الكاش
-const CACHE_DIR = RNFS.ExternalDirectoryPath + '/SAMP';     // ← المكان الصحيح للاستخراج
-const CACHE_ZIP = RNFS.CachesDirectoryPath + '/cache.zip';  // ← مكان التحميل المؤقت
+// ====== إعدادات الكاش ======
+const CACHE_URL = 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gtasa.zip';
+const CACHE_DIR = RNFS.ExternalDirectoryPath + '/SAMP';
+const CACHE_ZIP = RNFS.CachesDirectoryPath + '/cache.zip';
 const USERNAME_KEY = '@samp_username';
 const CACHE_READY_KEY = '@samp_cache_ready';
 
@@ -66,7 +67,7 @@ const ModeScreen: React.FC = () => {
     setStatusText('جاري التحضير...');
 
     try {
-      // 1) أنشئ المجلدات اللازمة
+      // 1) أنشئ مجلد SAMP
       const cacheDirExists = await RNFS.exists(CACHE_DIR);
       if (!cacheDirExists) {
         await RNFS.mkdir(CACHE_DIR);
@@ -100,22 +101,20 @@ const ModeScreen: React.FC = () => {
         throw new Error(`خطأ في السيرفر: ${result.statusCode}`);
       }
 
-      // 3) استخراج الملفات (Unzip)
+      // 3) فك الضغط (Unzip) — يشتغل بعد ما يكمل التحميل
       setStatusText('جاري استخراج الملفات...');
-
-      // ← ← ← إذا عندك مكتبة react-native-zip-archive ← ← ←
-      // const ZipArchive = require('react-native-zip-archive').default;
-      // await ZipArchive.unzip(CACHE_ZIP, CACHE_DIR);
-
-      // ← ← ← إذا الكاش مو zip ومجرد ملف واحد ← ← ←
-      // انقل الملف للمكان الصحيح:
-      // await RNFS.moveFile(CACHE_ZIP, CACHE_DIR + '/cache.dat');
+      await unzip(CACHE_ZIP, CACHE_DIR);
 
       // علّم إن الاستخراج تم
       await RNFS.writeFile(CACHE_DIR + '/.extracted', 'done');
       await AsyncStorage.setItem(CACHE_READY_KEY, 'true');
 
+      // احذف ملف ZIP المؤقت
+      await RNFS.unlink(CACHE_ZIP);
+
       setStatusText('تم التحميل والاستخراج ✅');
+
+      // 4) الانتقال لشاشة السيرفرات بعد 0.8 ثانية
       setTimeout(() => goToGameScreen(), 800);
 
     } catch (error: any) {
@@ -128,7 +127,6 @@ const ModeScreen: React.FC = () => {
   };
 
   const goToGameScreen = () => {
-    // ينتقل لشاشة السيرفرات ويمرر اسم المستخدم
     navigation.replace('Game', { username: username.trim() });
   };
 
