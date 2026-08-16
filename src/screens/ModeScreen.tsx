@@ -59,7 +59,6 @@ const ModeScreen: React.FC = () => {
 
   const handlePlay = async () => {
     try {
-      // تحقق من الكاش أولاً
       const hasCache = await safeGetItem<boolean>(CACHE_KEY, false);
       if (!hasCache) {
         Alert.alert(
@@ -72,11 +71,9 @@ const ModeScreen: React.FC = () => {
 
       setConnecting(true);
 
-      // استدعي Native Module للاتصال بالسيرفر
       if (NativeModules.SAMPLauncher && NativeModules.SAMPLauncher.connect) {
         await NativeModules.SAMPLauncher.connect(server.ip, server.port);
       } else {
-        // إذا ما موجود Native Module، ننتظر شوي ونطلع رسالة
         setTimeout(() => {
           setConnecting(false);
           Alert.alert('تنبيه', 'Native Module غير متوفر. تأكد من بناء التطبيق بشكل صحيح.');
