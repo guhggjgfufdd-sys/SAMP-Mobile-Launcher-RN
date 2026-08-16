@@ -9,22 +9,22 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate;
 
 public class MainActivity extends ReactActivity {
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-    super.onCreate(savedInstanceState);
-  }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        super.onCreate(savedInstanceState);
+    }
 
-  @Override
-  protected String getMainComponentName() {
-    return "SAMP-Mobile-Launcher-RN";
-  }
+    @Override
+    protected String getMainComponentName() {
+        return "SAMP-Mobile-Launcher-RN";
+    }
 
-  @Override
-  protected ReactActivityDelegate createReactActivityDelegate() {
-    return new DefaultReactActivityDelegate(
-        this,
-        getMainComponentName(),
-        DefaultNewArchitectureEntryPoint.getFabricEnabled());
-  }
+    @Override
+    protected ReactActivityDelegate createReactActivityDelegate() {
+        return new DefaultReactActivityDelegate(
+                this,
+                getMainComponentName(),
+                false); // غيرنا من getFabricEnabled() إلى false عشان نتجنب مشاكل New Architecture
+    }
 }
