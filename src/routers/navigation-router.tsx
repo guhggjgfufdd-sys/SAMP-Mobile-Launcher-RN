@@ -28,17 +28,15 @@ const NavigationRouter = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // انتظر شوي عشان كل شي يجهز
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 800));
       } catch (e) {
-        console.warn('Init error:', e);
+        console.warn(e);
       } finally {
         setIsReady(true);
-        // ====== هنا الحل المهم ======
         try {
           await RNBootSplash.hide({ fade: true });
-        } catch (splashError) {
-          console.warn('BootSplash hide error:', splashError);
+        } catch (e) {
+          console.warn('BootSplash error:', e);
         }
       }
     };
