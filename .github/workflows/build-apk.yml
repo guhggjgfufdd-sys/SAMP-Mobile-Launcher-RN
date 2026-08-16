@@ -1,64 +1,73 @@
 name: Build & Release APK
 
 on:
+  workflow_dispatch:  # ← تشغيل يدوي
   push:
     tags:
-      - 'v*'   # يشتغل لما تسوي tag يبدأ بـ v
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
 
-      - name: Setup JDK 17
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm ci
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
       - name: Decode Keystore
-        env:
-          ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo $ENCODED_STRING | base64 -di > android/app/my-release-key.keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
       - name: Build Release APK
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=release.keystore \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
         env:
-          MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
-          MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Upload to GitHub Releases
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: android/app/build/outputs/apk/release/app-release.apk
-          name: "Release ${{ github.ref_name }}"
-          body: |
-            ## 🚀 إصدار جديد
-            
-            - تم بناء APK تلقائياً
-            - تحديث الكاش
-            - إصلاحات الأداء
-            
-            **التحميل:** `gtasa.zip` يرفع يدوياً في نفس الـ Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
