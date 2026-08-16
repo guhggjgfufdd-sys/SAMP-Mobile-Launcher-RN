@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, StyleSheet } from 'react-native';
+import { StatusBar, View, ActivityIndicator, StyleSheet } from 'react-native';
 import RNBootSplash from 'react-native-bootsplash';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ModeScreen from '../screens/ModeScreen';
 
 const Stack = createNativeStackNavigator();
@@ -28,7 +25,8 @@ const NavigationRouter = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // انتظر شوي
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } catch (e) {
         console.warn(e);
       } finally {
@@ -36,7 +34,7 @@ const NavigationRouter = () => {
         try {
           await RNBootSplash.hide({ fade: true });
         } catch (e) {
-          console.warn('BootSplash error:', e);
+          console.warn(e);
         }
       }
     };
@@ -44,27 +42,30 @@ const NavigationRouter = () => {
   }, []);
 
   if (!isReady) {
-    return null;
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#5b8def" />
+      </View>
+    );
   }
 
   return (
-    <GestureHandlerRootView style={styles.flex}>
-      <SafeAreaProvider>
-        <BottomSheetModalProvider>
-          <NavigationContainer theme={MyTheme}>
-            <StatusBar barStyle="light-content" backgroundColor="#0b0c10" />
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="Mode" component={ModeScreen} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </BottomSheetModalProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <NavigationContainer theme={MyTheme}>
+      <StatusBar barStyle="light-content" backgroundColor="#0b0c10" />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Mode" component={ModeScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0b0c10',
+  },
 });
 
 export default NavigationRouter;
