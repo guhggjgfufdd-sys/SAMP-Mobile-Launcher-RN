@@ -1,37 +1,17 @@
-import React, { useEffect } from 'react';
-import { BackHandler, View, StyleSheet } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import RNBootSplash from 'react-native-bootsplash';
-import { NavigationRouter } from './src/routers/navigation-router';
+import React from 'react';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import NavigationRouter from './src/routers/navigation-router';
+import { store, persistor } from './src/store';
 
-export default function App() {
-  useEffect(() => {
-    const backAction = () => true;
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    
-    // نخفي البوت سبلاش بعد ثانيتين بشكل مضمون
-    const timer = setTimeout(() => {
-      RNBootSplash.hide({ fade: true });
-    }, 2000);
-    
-    return () => {
-      backHandler.remove();
-      clearTimeout(timer);
-    };
-  }, []);
-
+const App = () => {
   return (
-    <SafeAreaProvider>
-      <View style={styles.container}>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
         <NavigationRouter />
-      </View>
-    </SafeAreaProvider>
+      </PersistGate>
+    </Provider>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-});
+export default App;
