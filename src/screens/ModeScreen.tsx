@@ -10,7 +10,18 @@ import {
   NativeModules,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { safeGetItem } from '../../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const getItem = async (key: string, defaultValue: any) => {
+  try {
+    const item = await AsyncStorage.getItem(key);
+    if (item === null || item === '') return defaultValue;
+    return JSON.parse(item);
+  } catch {
+    return defaultValue;
+  }
+};
+
 interface ServerInfo {
   name: string;
   ip: string;
@@ -41,10 +52,10 @@ const ModeScreen: React.FC = () => {
   const loadServerInfo = useCallback(async () => {
     setLoading(true);
     try {
-      const saved = await safeGetItem<ServerInfo>(SERVER_KEY, DEFAULT_SERVER);
+      const saved = await getItem(SERVER_KEY, DEFAULT_SERVER);
       setServer(saved);
     } catch (e) {
-      console.error('Error loading server info:', e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -58,86 +69,52 @@ const ModeScreen: React.FC = () => {
 
   const handlePlay = async () => {
     try {
-      const hasCache = await safeGetItem<boolean>(CACHE_KEY, false);
+      const hasCache = await getItem(CACHE_KEY, false);
       if (!hasCache) {
-        Alert.alert(
-          'الكاش ناقص',
-          'يجب تحميل ملفات الكاش أولاً قبل الدخول للعبة.',
-          [{ text: 'حسناً' }]
-        );
+        Alert.alert('الكاش ناقص', 'يجب تحميل ملفات الكاش أولاً.', [{ text: 'حسناً' }]);
         return;
       }
-
       setConnecting(true);
-
-      if (NativeModules.SAMPLauncher && NativeModules.SAMPLauncher.connect) {
+      if (NativeModules.SAMPLauncher?.connect) {
         await NativeModules.SAMPLauncher.connect(server.ip, server.port);
       } else {
-        setTimeout(() => {
-          setConnecting(false);
-          Alert.alert('تنبيه', 'Native Module غير متوفر. تأكد من بناء التطبيق بشكل صحيح.');
-        }, 1000);
+        setTimeout(() => { setConnecting(false); Alert.alert('تنبيه', 'Native Module غير متوفر'); }, 1000);
       }
     } catch (error) {
       setConnecting(false);
-      console.error('Connection error:', error);
-      Alert.alert('خطأ في الاتصال', 'تعذر الاتصال بالسيرفر. تأكد من الكاش.');
+      Alert.alert('خطأ في الاتصال', 'تعذر الاتصال بالسيرفر.');
     }
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>الرئيسية</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#5b8def" />
-        </View>
+        <View style={styles.header}><Text style={styles.headerTitle}>الرئيسية</Text></View>
+        <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#5b8def" /></View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>الرئيسية</Text>
-      </View>
-
+      <View style={styles.header}><Text style={styles.headerTitle}>الرئيسية</Text></View>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <Text style={styles.sectionTitle}>أخبار المشروع</Text>
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>السيرفر يعمل الآن! 🔥</Text>
-          <Text style={styles.newsDesc}>
-            اضغط على "بدء اللعب" للانضمام مباشرة إلى السيرفر الخاص بك.
-          </Text>
+          <Text style={styles.newsDesc}>اضغط على "بدء اللعب" للانضمام إلى السيرفر الخاص بك.</Text>
         </View>
-
         <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
         <View style={styles.serverCard}>
           <View style={styles.serverHeader}>
             <Text style={styles.serverName}>{server.name}</Text>
-            <View style={styles.serverStatus}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>متصل</Text>
-            </View>
+            <View style={styles.serverStatus}><View style={styles.statusDot} /><Text style={styles.statusText}>متصل</Text></View>
           </View>
-
           <Text style={styles.serverIp}>{server.ip}:{server.port}</Text>
-
           <View style={styles.serverFooter}>
-            <Text style={styles.playerCount}>
-              اللاعبين: {server.players} / {server.maxPlayers}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.playButton, connecting && styles.playButtonDisabled]}
-              onPress={handlePlay}
-              disabled={connecting}
-            >
-              <Text style={styles.playButtonText}>
-                {connecting ? 'جاري الاتصال...' : 'بدء اللعب'}
-              </Text>
+            <Text style={styles.playerCount}>اللاعبين: {server.players} / {server.maxPlayers}</Text>
+            <TouchableOpacity style={[styles.playButton, connecting && styles.playButtonDisabled]} onPress={handlePlay} disabled={connecting}>
+              <Text style={styles.playButtonText}>{connecting ? 'جاري الاتصال...' : 'بدء اللعب'}</Text>
               {!connecting && <Text style={styles.playIcon}>▶</Text>}
             </TouchableOpacity>
           </View>
