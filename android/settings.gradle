@@ -17,7 +17,6 @@ dependencyResolutionManagement {
 rootProject.name = 'SAMP-Mobile-Launcher-RN'
 include ':app'
 
-// ↓↓↓ هذي السطور لازم تكون موجودة ↓↓↓
 apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
 applyNativeModulesSettingsGradle(settings)
 
