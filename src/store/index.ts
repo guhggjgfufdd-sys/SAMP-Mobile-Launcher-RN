@@ -1,27 +1,35 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { createStore, applyMiddleware, combineReducers } from 'redux';
 import { persistStore, persistReducer } from 'redux-persist';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { combineReducers } from 'redux';
 import thunk from 'redux-thunk';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const persistConfig = {
-  key: 'root',
-  storage: AsyncStorage,
+// ====== Reducers ======
+const appReducer = (state = { mode: 'default' }, action: any) => {
+  switch (action.type) {
+    case 'SET_MODE_TYPE':
+      return { ...state, mode: action.payload };
+    default:
+      return state;
+  }
 };
 
 const rootReducer = combineReducers({
-  // أضف reducers مالك هنا
-  app: (state = {}, action) => state,
+  app: appReducer,
 });
+
+// ====== Persist Config ======
+const persistConfig = {
+  key: 'root',
+  storage: AsyncStorage,
+  whitelist: ['app'],
+};
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-export const store = configureStore({
-  reducer: persistedReducer,
-  middleware: [thunk],
-});
-
+// ====== Store ======
+export const store = createStore(persistedReducer, applyMiddleware(thunk));
 export const persistor = persistStore(store);
 
-export type RootState = ReturnType<typeof store.getState>;
+// ====== Types ======
+export type RootState = ReturnType<typeof rootReducer>;
 export type AppDispatch = typeof store.dispatch;
