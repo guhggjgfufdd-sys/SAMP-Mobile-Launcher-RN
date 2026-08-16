@@ -12,16 +12,27 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const getItem = async (key: string, defaultValue: any) => {
+// ====== دالة آمنة للقراءة من AsyncStorage ======
+const getItem = async (key: string, defaultValue: any): Promise<any> => {
   try {
     const item = await AsyncStorage.getItem(key);
-    if (item === null || item === '') return defaultValue;
+    if (item === null || item === '' || item === 'null' || item === 'undefined') {
+      return defaultValue;
+    }
     return JSON.parse(item);
-  } catch {
+  } catch (error) {
+    console.warn(`AsyncStorage parse error for key [${key}]:`, error);
+    // إذا فشل الـ parse، امسح القيمة التالفة ورجع القيمة الافتراضية
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch (e) {
+      // تجاهل
+    }
     return defaultValue;
   }
 };
 
+// ====== Interfaces ======
 interface ServerInfo {
   name: string;
   ip: string;
@@ -31,6 +42,7 @@ interface ServerInfo {
   online: boolean;
 }
 
+// ====== Constants ======
 const DEFAULT_SERVER: ServerInfo = {
   name: 'Las Venturas RP',
   ip: '142.132.203.47',
@@ -43,24 +55,48 @@ const DEFAULT_SERVER: ServerInfo = {
 const SERVER_KEY = '@samp_server_info';
 const CACHE_KEY = '@samp_cache_downloaded';
 
+// ====== Component ======
 const ModeScreen: React.FC = () => {
   const navigation = useNavigation();
   const [server, setServer] = useState<ServerInfo>(DEFAULT_SERVER);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const loadServerInfo = useCallback(async () => {
     setLoading(true);
+    setHasError(false);
     try {
       const saved = await getItem(SERVER_KEY, DEFAULT_SERVER);
-      setServer(saved);
+      
+      // تحقق إضافي من صحة البيانات
+      if (
+        saved &&
+        typeof saved === 'object' &&
+        saved.ip &&
+        saved.port &&
+        saved.name
+      ) {
+        setServer(saved);
+      } else {
+        console.warn('Invalid server data, falling back to default');
+        setServer(DEFAULT_SERVER);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Critical error in loadServerInfo:', e);
+      setHasError(true);
+      setServer(DEFAULT_SERVER);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // تحميل أولي عند فتح الشاشة
+  useEffect(() => {
+    loadServerInfo();
+  }, [loadServerInfo]);
+
+  // إعادة التحميل عند الرجوع للشاشة
   useFocusEffect(
     useCallback(() => {
       loadServerInfo();
@@ -74,11 +110,15 @@ const ModeScreen: React.FC = () => {
         Alert.alert('الكاش ناقص', 'يجب تحميل ملفات الكاش أولاً.', [{ text: 'حسناً' }]);
         return;
       }
+
       setConnecting(true);
       if (NativeModules.SAMPLauncher?.connect) {
         await NativeModules.SAMPLauncher.connect(server.ip, server.port);
       } else {
-        setTimeout(() => { setConnecting(false); Alert.alert('تنبيه', 'Native Module غير متوفر'); }, 1000);
+        setTimeout(() => {
+          setConnecting(false);
+          Alert.alert('تنبيه', 'Native Module غير متوفر.');
+        }, 1000);
       }
     } catch (error) {
       setConnecting(false);
@@ -86,35 +126,81 @@ const ModeScreen: React.FC = () => {
     }
   };
 
+  // ====== Render Loading ======
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}><Text style={styles.headerTitle}>الرئيسية</Text></View>
-        <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#5b8def" /></View>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>الرئيسية</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5b8def" />
+        </View>
       </View>
     );
   }
 
+  // ====== Render Error State ======
+  if (hasError) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>الرئيسية</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>حدث خطأ في تحميل البيانات</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadServerInfo}>
+            <Text style={styles.retryText}>إعادة المحاولة</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // ====== Render Main ======
   return (
     <View style={styles.container}>
-      <View style={styles.header}><Text style={styles.headerTitle}>الرئيسية</Text></View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>الرئيسية</Text>
+      </View>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* أخبار المشروع */}
         <Text style={styles.sectionTitle}>أخبار المشروع</Text>
         <View style={styles.newsCard}>
           <Text style={styles.newsTitle}>السيرفر يعمل الآن! 🔥</Text>
-          <Text style={styles.newsDesc}>اضغط على "بدء اللعب" للانضمام إلى السيرفر الخاص بك.</Text>
+          <Text style={styles.newsDesc}>
+            اضغط على "بدء اللعب" للانضمام إلى السيرفر الخاص بك.
+          </Text>
         </View>
+
+        {/* اختيار السيرفر */}
         <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
         <View style={styles.serverCard}>
           <View style={styles.serverHeader}>
             <Text style={styles.serverName}>{server.name}</Text>
-            <View style={styles.serverStatus}><View style={styles.statusDot} /><Text style={styles.statusText}>متصل</Text></View>
+            <View style={styles.serverStatus}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>متصل</Text>
+            </View>
           </View>
-          <Text style={styles.serverIp}>{server.ip}:{server.port}</Text>
+
+          <Text style={styles.serverIp}>
+            {server.ip}:{server.port}
+          </Text>
+
           <View style={styles.serverFooter}>
-            <Text style={styles.playerCount}>اللاعبين: {server.players} / {server.maxPlayers}</Text>
-            <TouchableOpacity style={[styles.playButton, connecting && styles.playButtonDisabled]} onPress={handlePlay} disabled={connecting}>
-              <Text style={styles.playButtonText}>{connecting ? 'جاري الاتصال...' : 'بدء اللعب'}</Text>
+            <Text style={styles.playerCount}>
+              اللاعبين: {server.players} / {server.maxPlayers}
+            </Text>
+            <TouchableOpacity
+              style={[styles.playButton, connecting && styles.playButtonDisabled]}
+              onPress={handlePlay}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.playButtonText}>
+                {connecting ? 'جاري الاتصال...' : 'بدء اللعب'}
+              </Text>
               {!connecting && <Text style={styles.playIcon}>▶</Text>}
             </TouchableOpacity>
           </View>
@@ -124,30 +210,96 @@ const ModeScreen: React.FC = () => {
   );
 };
 
+// ====== Styles ======
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0c10' },
-  header: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 16, backgroundColor: '#0b0c10' },
+  header: {
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: '#0b0c10',
+  },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#ffffff', textAlign: 'right' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
   content: { padding: 16, paddingBottom: 100 },
-  sectionTitle: { fontSize: 17, fontWeight: '600', color: '#ffffff', marginBottom: 12, textAlign: 'right' },
-  newsCard: { backgroundColor: '#1a1c23', borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#2a2d36' },
-  newsTitle: { fontSize: 16, fontWeight: '500', color: '#5b8def', marginBottom: 8, textAlign: 'right' },
-  newsDesc: { fontSize: 14, color: '#9ca3af', lineHeight: 20, textAlign: 'right' },
-  serverCard: { backgroundColor: '#1a1c23', borderRadius: 12, padding: 16, borderWidth: 1.5, borderColor: '#5b8def' },
-  serverHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  newsCard: {
+    backgroundColor: '#1a1c23',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#2a2d35',
+  },
+  newsTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#5b8def',
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  newsDesc: {
+    fontSize: 14,
+    color: '#9ca3af',
+    lineHeight: 20,
+    textAlign: 'right',
+  },
+  serverCard: {
+    backgroundColor: '#1a1c23',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#5b8def',
+  },
+  serverHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   serverName: { fontSize: 18, fontWeight: '600', color: '#ffffff' },
   serverStatus: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusDot: { width: 10, height: 10, backgroundColor: '#4ade80', borderRadius: 5 },
   statusText: { fontSize: 14, color: '#4ade80', fontWeight: '500' },
-  serverIp: { fontSize: 14, color: '#9ca3af', marginBottom: 16, fontVariant: ['tabular-nums'] },
-  serverFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  serverIp: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginBottom: 16,
+    fontVariant: ['tabular-nums'],
+  },
+  serverFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   playerCount: { fontSize: 14, color: '#9ca3af' },
-  playButton: { backgroundColor: '#5b8def', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  playButton: {
+    backgroundColor: '#5b8def',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   playButtonDisabled: { opacity: 0.6 },
   playButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
   playIcon: { color: '#ffffff', fontSize: 12 },
+  errorText: { color: '#ef4444', fontSize: 16, marginBottom: 16, textAlign: 'center' },
+  retryButton: {
+    backgroundColor: '#5b8def',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
 });
 
 export default ModeScreen;
