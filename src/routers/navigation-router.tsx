@@ -56,7 +56,11 @@ export const NavigationRouter = React.memo(() => {
 
   return (
     <NavigationContainer
-      onReady={() => RNBootSplash.hide()}
+      onReady={() => {
+        setTimeout(() => {
+          RNBootSplash.hide();
+        }, 500);
+      }}
       ref={navigationRef}
       theme={DarkTheme}>
       <GestureHandlerRootView style={{ flex: 1 }}>
