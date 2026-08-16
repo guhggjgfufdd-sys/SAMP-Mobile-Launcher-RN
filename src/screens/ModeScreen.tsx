@@ -1,73 +1,270 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Text,
   View,
-  TouchableOpacity,
+  Text,
   StyleSheet,
-  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useAppDispatch } from '../hooks/useAppDispatch';
-import { fetchModeSetting, fetchUserNameSetting } from '../thunks/settingsThunks';
-import { setUserNameSetting } from '../actions/settingsActions';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { safeGetItem } from '../utils/storage';
 
-type ScreenType = NativeStackScreenProps<any>;
+interface ServerInfo {
+  name: string;
+  ip: string;
+  port: number;
+  players: number;
+  maxPlayers: number;
+  online: boolean;
+}
 
-export const ModeScreen = React.memo(({ navigation }: ScreenType) => {
-  const dispatch = useAppDispatch();
-  const [nickname, setNickname] = useState('');
+const DEFAULT_SERVER: ServerInfo = {
+  name: 'Las Venturas RP',
+  ip: '142.132.203.47',
+  port: 21299,
+  players: 0,
+  maxPlayers: 100,
+  online: true,
+};
 
-  const onConnect = useCallback(async () => {
-    if (!nickname.trim()) {
-      Alert.alert('تنبيه', 'اكتب اسمك أولاً!');
-      return;
+const SERVER_KEY = '@samp_server_info';
+
+const HomeScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const [server, setServer] = useState<ServerInfo>(DEFAULT_SERVER);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+
+  const loadServerInfo = useCallback(async () => {
+    setLoading(true);
+    const saved = await safeGetItem<ServerInfo>(SERVER_KEY, DEFAULT_SERVER);
+    setServer(saved);
+    setLoading(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadServerInfo();
+    }, [loadServerInfo])
+  );
+
+  const handlePlay = async () => {
+    try {
+      setConnecting(true);
+      
+      // هنا تستدعي دالة الاتصال بالسيرفر من native module
+      // مثال: await NativeModules.SAMPLauncher.connect(server.ip, server.port);
+      
+      // محاكاة الاتصال
+      setTimeout(() => {
+        setConnecting(false);
+        // التنقل للعبة
+      }, 2000);
+      
+    } catch (error) {
+      setConnecting(false);
+      console.error('Connection error:', error);
+      Alert.alert('خطأ في الاتصال', 'تعذر الاتصال بالسيرفر. تأكد من الكاش.');
     }
+  };
 
-    await AsyncStorage.setItem('@samp_nickname', nickname.trim());
-    dispatch(setUserNameSetting({ userName: nickname.trim() }));
-    dispatch(fetchUserNameSetting(nickname.trim()));
-    dispatch(fetchModeSetting(1));
-    navigation.replace('Initiation');
-  }, [nickname, dispatch, navigation]);
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>الرئيسية</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5b8def" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* الشعار بدون صورة */}
-      <View style={styles.logoPlaceholder}>
-        <Text style={styles.logoText}>SAMP</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>الرئيسية</Text>
       </View>
 
-      <Text style={styles.title}>Las Venturas RP</Text>
-      <Text style={styles.subtitle}>SAMP Mobile</Text>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* أخبار المشروع */}
+        <Text style={styles.sectionTitle}>أخبار المشروع</Text>
+        <View style={styles.newsCard}>
+          <Text style={styles.newsTitle}>السيرفر يعمل الآن! 🔥</Text>
+          <Text style={styles.newsDesc}>
+            اضغط على "بدء اللعب" للانضمام مباشرة إلى السيرفر الخاص بك.
+          </Text>
+        </View>
 
-      <Text style={styles.label}>اسم اللاعب</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="مثال: Don_Corleone"
-        placeholderTextColor="#666"
-        value={nickname}
-        onChangeText={setNickname}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+        {/* اختيار السيرفر */}
+        <Text style={styles.sectionTitle}>اختيار السيرفر</Text>
+        <View style={styles.serverCard}>
+          <View style={styles.serverHeader}>
+            <Text style={styles.serverName}>{server.name}</Text>
+            <View style={styles.serverStatus}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>متصل</Text>
+            </View>
+          </View>
+          
+          <Text style={styles.serverIp}>
+            {server.ip}:{server.port}
+          </Text>
 
-      <TouchableOpacity style={styles.connectBtn} onPress={onConnect}>
-        <Text style={styles.connectText}>حفظ الاسم والدخول</Text>
-      </TouchableOpacity>
+          <View style={styles.serverFooter}>
+            <Text style={styles.playerCount}>
+              اللاعبين: {server.players} / {server.maxPlayers}
+            </Text>
+            
+            <TouchableOpacity 
+              style={[styles.playButton, connecting && styles.playButtonDisabled]}
+              onPress={handlePlay}
+              disabled={connecting}
+            >
+              <Text style={styles.playButtonText}>
+                {connecting ? 'جاري الاتصال...' : 'بدء اللعب'}
+              </Text>
+              {!connecting && (
+                <Text style={styles.playIcon}>▶</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
-});
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  logoPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  logoText: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  title: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  subtitle: { color: '#888', fontSize: 16, marginBottom: 40 },
-  label: { color: '#fff', alignSelf: 'flex-end', marginBottom: 8, fontSize: 16, width: '100%' },
-  input: { backgroundColor: '#16213e', color: '#fff', width: '100%', borderRadius: 12, padding: 15, fontSize: 16, textAlign: 'right', marginBottom: 30 },
-  connectBtn: { backgroundColor: '#4A90D9', paddingVertical: 15, paddingHorizontal: 50, borderRadius: 12, width: '100%', alignItems: 'center' },
-  connectText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  container: {
+    flex: 1,
+    backgroundColor: '#0b0c10',
+  },
+  header: {
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: '#0b0c10',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
+    textAlign: 'right',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  newsCard: {
+    backgroundColor: '#1a1c23',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#2a2d36',
+  },
+  newsTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#5b8def',
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  newsDesc: {
+    fontSize: 14,
+    color: '#9ca3af',
+    lineHeight: 20,
+    textAlign: 'right',
+  },
+  serverCard: {
+    backgroundColor: '#1a1c23',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#5b8def',
+  },
+  serverHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  serverName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  serverStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    backgroundColor: '#4ade80',
+    borderRadius: 5,
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#4ade80',
+    fontWeight: '500',
+  },
+  serverIp: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginBottom: 16,
+    fontVariant: ['tabular-nums'],
+  },
+  serverFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  playerCount: {
+    fontSize: 14,
+    color: '#9ca3af',
+  },
+  playButton: {
+    backgroundColor: '#5b8def',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  playButtonDisabled: {
+    opacity: 0.6,
+  },
+  playButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  playIcon: {
+    color: '#ffffff',
+    fontSize: 12,
+  },
 });
+
+export default HomeScreen;
