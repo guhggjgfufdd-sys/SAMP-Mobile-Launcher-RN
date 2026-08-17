@@ -1,26 +1,24 @@
 apply plugin: "com.android.application"
-apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-react {
-}
-
 def enableProguardInReleaseBuilds = false
-def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.sampmobilelauncher"
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    namespace "com.touch.mobile.dark"
+
     defaultConfig {
-        applicationId "com.sampmobilelauncher"
+        applicationId "com.touch.mobile.dark"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
     }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -28,7 +26,11 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            signingConfig signingConfigs.debug
+        }
     }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -43,13 +45,6 @@ android {
 
 dependencies {
     implementation("com.facebook.react:react-android")
-
-    if (hermesEnabled.toBoolean()) {
-        implementation("com.facebook.react:hermes-android")
-    } else {
-        implementation jscFlavor
-    }
 }
 
-apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
-applyNativeModulesAppBuildGradle(project)
+apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
