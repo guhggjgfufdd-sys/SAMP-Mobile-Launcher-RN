@@ -27,7 +27,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-       - name: Install deps
+      - name: Install deps
         run: yarn install
 
       - name: Verify install
