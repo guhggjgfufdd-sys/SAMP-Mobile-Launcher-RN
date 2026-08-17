@@ -26,9 +26,6 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        release {
-            signingConfig signingConfigs.debug
-        }
     }
 
     buildTypes {
