@@ -28,6 +28,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Clean everything
+        run: |
+          rm -rf node_modules package-lock.json
+          rm -f .babelrc
+          npm cache clean --force
+
       - name: Install deps
         run: npm install
 
@@ -36,16 +42,6 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
-
-      - name: Debug Metro Bundle
-        run: |
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-
-      - name: Clean Gradle
-        run: |
-          cd android
-          ./gradlew clean
 
       - name: Build Release APK
         run: |
