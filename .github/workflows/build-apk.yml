@@ -1,4 +1,4 @@
-name: Build & Release APK
+name: Build Android App
 
 on:
   workflow_dispatch:
@@ -6,35 +6,35 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Setup Java JDK
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew
-
-      - name: Install Dependencies
+      - name: Install dependencies
         run: yarn install
 
-      - name: Build Android Release APK
+      - name: Bundle React Native
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+
+      - name: Build APK
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
 
-      - name: Upload APK to Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SAMP-Launcher-APK
-          path: android/app/build/outputs/apk/release/*.apk
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
