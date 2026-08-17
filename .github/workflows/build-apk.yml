@@ -37,6 +37,15 @@ jobs:
           echo "== node_modules count =="
           ls node_modules | wc -l
 
+      - name: Debug babel versions (why do we have duplicates?)
+        run: |
+          echo "check1: all resolved @babel/core versions"
+          yarn list @babel/core
+          echo "check2: why is @babel/core installed"
+          yarn why @babel/core
+          echo "check3: why is @babel/traverse installed"
+          yarn why @babel/traverse
+
       - name: Debug react-native config deep
         run: |
           echo "check1: actual resolved cli-config version"
