@@ -27,8 +27,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install deps (uses committed yarn.lock)
-        run: yarn install --frozen-lockfile
+- name: Install deps
+        run: yarn install
 
       - name: Verify install
         run: |
