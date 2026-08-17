@@ -1,14 +1,13 @@
 import React from 'react';
-import { Provider } from 'react-redux';
-import { store } from './src/store';
-import NavigationRouter from './src/navigation/navigation-router';
+import {SafeAreaView, Text, StatusBar} from 'react-native';
 
-const App = () => {
+function App() {
   return (
-    <Provider store={store}>
-      <NavigationRouter />
-    </Provider>
+    <SafeAreaView>
+      <StatusBar barStyle="dark-content" />
+      <Text>Hello SAMP</Text>
+    </SafeAreaView>
   );
-};
+}
 
 export default App;
