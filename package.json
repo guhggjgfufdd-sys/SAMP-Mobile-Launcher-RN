@@ -26,9 +26,9 @@
     "react-redux": "^9.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/runtime": "^7.24.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
     "@react-native/gradle-plugin": "^0.73.0",
     "@react-native/babel-preset": "0.73.0",
@@ -45,12 +45,12 @@
     "typescript": "5.0.4"
   },
   "overrides": {
-    "@babel/core": "^7.20.0",
-    "@babel/traverse": "^7.20.0",
-    "@babel/generator": "^7.20.0",
-    "@babel/helpers": "^7.20.0",
-    "@babel/parser": "^7.20.0",
-    "@babel/types": "^7.20.0",
+    "@babel/core": "^7.24.0",
+    "@babel/traverse": "^7.24.0",
+    "@babel/generator": "^7.24.0",
+    "@babel/helpers": "^7.24.0",
+    "@babel/parser": "^7.24.0",
+    "@babel/types": "^7.24.0",
     "@react-native-community/cli-config": "12.3.6",
     "@react-native-community/cli-tools": "12.3.6",
     "@react-native-community/cli": "12.3.6",
