@@ -1,27 +1,78 @@
-- name: Debug react-native config
+name: Build & Release APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      JAVA_OPTS: "-Xmx4096m"
+      GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Clean everything
+        run: |
+          rm -rf node_modules package-lock.json
+          rm -f .babelrc
+          npm cache clean --force
+
+      - name: Install deps
+        run: npm install
+
+      - name: Verify install
+        run: |
+          echo "== package.json =="
+          cat package.json
+          echo "== node_modules count =="
+          ls node_modules | wc -l
+
+      - name: Debug react-native config deep
         run: |
           echo "== check for react-native.config.js files =="
-          find . -maxdepth 2 -name "react-native.config.js" -o -name ".react-native.config.js" | grep -v node_modules
-
-          echo "== node & npm versions =="
+          find . -maxdepth 2 \( -name "react-native.config.js" -o -name ".react-native.config.js" \) -not -path "*/node_modules/*"
+          echo "== node and npm versions =="
           node -v
           npm -v
-
           echo "== verify package.json dependencies readable =="
           node -e "console.log(JSON.stringify(require('./package.json').dependencies, null, 2))"
-
           echo "== check for nested react-native installs =="
           find node_modules -maxdepth 3 -path "*/node_modules/react-native" -not -path "node_modules/react-native"
-
-          echo "== check @react-native-community/cli-config resolution =="
-          node -e "
-            try {
-              const config = require('@react-native-community/cli-config');
-              console.log('cli-config module loaded OK');
-            } catch (e) {
-              console.log('ERROR loading cli-config:', e.message);
-            }
-          "
-
-          echo "== run CLI config WITHOUT redirect to see stderr separately =="
+          echo "== try loading cli-config module directly =="
+          node -e "try { require('@react-native-community/cli-config'); console.log('cli-config module loaded OK'); } catch (e) { console.log('ERROR loading cli-config:', e.message); }"
+          echo "== run CLI config without stderr redirect =="
           node node_modules/react-native/cli.js config --verbose
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
