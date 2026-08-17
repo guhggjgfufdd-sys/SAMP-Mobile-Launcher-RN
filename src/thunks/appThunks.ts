@@ -1,18 +1,22 @@
-import RNGpuInfo from 'react-native-gpu-info';
 import { setGPU, setInitial } from '../actions/appActions';
 import { AppThunk } from '../store/store';
 import { fetchArticles } from './articleThunks';
 import { fetchDistribution } from './distributionThunks';
 import { fetchDonates } from './donateThunks';
 import { appRegisterDeviceForRemoteMessages } from './notificationThunks';
-import { fetchPermisions } from './permisionThunks';
+import { fetchPermissions } from './permissionThunks';
 import { fetchInitialSettings } from './settingsThunks';
+
+// بديل وهمي لمكتبة GPU لتجاوز نقص الحزمة أثناء التجميع
+const RNGpuInfo = {
+  getGlRenderer: () => 'etc',
+};
 
 export const fetchInitialApp = (): AppThunk => async dispatch => {
   const glRenderer = RNGpuInfo.getGlRenderer();
   dispatch(setGPU(glRenderer));
 
-  await dispatch(fetchPermisions());
+  await dispatch(fetchPermissions());
   await dispatch(fetchInitialSettings());
   await dispatch(fetchDistribution());
   await dispatch(fetchArticles());
