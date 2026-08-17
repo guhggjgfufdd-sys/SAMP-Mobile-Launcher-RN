@@ -5,7 +5,7 @@
     </style>
 
     <!-- SplashScreen Theme -->
-    <style name="Theme.SplashScreen" parent="Theme.SplashScreen.Common">
+    <style name="Theme.SplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@android:color/black</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/AppTheme</item>
