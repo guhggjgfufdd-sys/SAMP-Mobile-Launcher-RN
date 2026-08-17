@@ -1,4 +1,3 @@
-import { LINK_FORUM_HELP } from '@env';
 import React from 'react';
 import { Image, ImageBackground, Linking, Text, View } from 'react-native';
 import {
@@ -9,6 +8,9 @@ import {
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { selectModeType } from '../../selectors/settingSelectors';
 import { styles } from '../../styles/LoaderStyle';
+
+// رابط المنتدى أو الدعم الفني الخاص بسيرفرك
+const LINK_FORUM_HELP = 'https://google.com';
 
 // بديل وهمي لمكون الثلج لتجاوز نقص المكتبة أثناء التجميع
 const Snow = (_props: any) => null;
@@ -21,7 +23,9 @@ export const LoaderContainer = React.memo((props: LoaderContainerType) => {
   const isSnow = useAppSelector(selectModeType);
 
   const supportHandler = React.useCallback(async () => {
-    await Linking.openURL(LINK_FORUM_HELP);
+    if (LINK_FORUM_HELP) {
+      await Linking.openURL(LINK_FORUM_HELP);
+    }
   }, []);
 
   return (
