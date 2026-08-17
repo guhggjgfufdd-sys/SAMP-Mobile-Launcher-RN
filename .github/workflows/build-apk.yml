@@ -31,14 +31,14 @@ jobs:
         run: echo "== package.json ==" && cat package.json && echo "== node_modules count ==" && ls node_modules | wc -l
       - name: Debug react-native config deep
         run: |
-          echo "check1: direct npx call bypassing react-native/cli.js"
-          npx @react-native-community/cli config --verbose
-          echo "check2: compare with react-native/cli.js wrapper"
-          node node_modules/react-native/cli.js config --verbose
-          echo "check3: inspect react-native cli.js file itself"
-          cat node_modules/react-native/cli.js
-          echo "check4: inspect react-native package.json platforms field"
-          node -e "console.log(JSON.stringify(require('react-native/package.json').platforms || 'NO PLATFORMS FIELD', null, 2))"
+          echo "check1: actual resolved cli-config version"
+          npm ls @react-native-community/cli-config
+          echo "check2: actual resolved cli-platform-android version"
+          npm ls @react-native-community/cli-platform-android
+          echo "check3: source of loadConfig.js"
+          cat node_modules/@react-native-community/cli-config/build/loadConfig.js
+          echo "check4: source of index.js in cli-config"
+          cat node_modules/@react-native-community/cli-config/build/index.js
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       - name: Make gradlew executable
