@@ -37,11 +37,11 @@ jobs:
           echo "== node_modules count =="
           ls node_modules | wc -l
 
-      - name: Debug babel versions (confirm resolutions applied)
+      - name: Debug babel versions (should show ONE version now)
         run: |
-          echo "check1: all resolved @babel/core versions (should be ONE now)"
+          echo "check1: all resolved @babel/core versions"
           yarn list @babel/core
-          echo "check2: all resolved @babel/traverse versions (should be ONE now)"
+          echo "check2: all resolved @babel/traverse versions"
           yarn list @babel/traverse
 
       - name: Debug react-native config deep
@@ -50,7 +50,7 @@ jobs:
           yarn list @react-native-community/cli-config --depth=0
           echo "check2: actual resolved cli-platform-android version"
           yarn list @react-native-community/cli-platform-android --depth=0
-          echo "check3: what react-native config ACTUALLY returns (this is what Gradle calls)"
+          echo "check3: what react-native config ACTUALLY returns"
           npx react-native config
 
       - name: Setup Android SDK
