@@ -1,7 +1,6 @@
 import { LINK_FORUM_HELP } from '@env';
 import React from 'react';
 import { Image, ImageBackground, Linking, Text, View } from 'react-native';
-import Snow from 'react-native-snowflakes';
 import {
   appBackground,
   appBackgroundNew,
@@ -10,6 +9,9 @@ import {
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { selectModeType } from '../../selectors/settingSelectors';
 import { styles } from '../../styles/LoaderStyle';
+
+// بديل وهمي لمكون الثلج لتجاوز نقص المكتبة أثناء التجميع
+const Snow = (_props: any) => null;
 
 type LoaderContainerType = {
   children: React.ReactNode;
@@ -58,7 +60,6 @@ export const LoaderContainer = React.memo((props: LoaderContainerType) => {
       </ImageBackground>
       {isSnow === 1 && (
         <Snow fullScreen snowflakesCount={100} fallSpeed="medium" />
-        // <Snow fullScreen snowflakesCount={100} fallSpeed="medium" />
       )}
     </View>
   );
