@@ -4,7 +4,4 @@ module.exports = {
       sourceDir: './android',
     },
   },
-  platforms: {
-    android: require('@react-native-community/cli-platform-android'),
-  },
 };
