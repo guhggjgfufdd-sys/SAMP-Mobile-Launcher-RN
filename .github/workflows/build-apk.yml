@@ -38,7 +38,13 @@ jobs:
         run: npm install
 
       - name: Debug react-native config
-        run: node node_modules/react-native/cli.js config
+        run: |
+          echo "--- Installed CLI packages ---"
+          ls node_modules/@react-native-community/ || true
+          echo "--- npm ls cli-platform-android ---"
+          npm ls @react-native-community/cli-platform-android || true
+          echo "--- verbose config ---"
+          node node_modules/react-native/cli.js config --verbose || true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
