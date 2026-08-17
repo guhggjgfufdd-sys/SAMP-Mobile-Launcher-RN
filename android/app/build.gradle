@@ -42,8 +42,12 @@ android {
 
 dependencies {
     implementation("com.facebook.react:react-android")
-    // إضافة مكتبة Splash Screen للحل
+    
+    // المكتبات الأساسية لحل أخطاء التجميع والواجهات
     implementation "androidx.core:core-splashscreen:1.0.1"
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "androidx.recyclerview:recyclerview:1.2.1"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
