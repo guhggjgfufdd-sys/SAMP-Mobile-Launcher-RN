@@ -14,37 +14,51 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
+
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Clean everything
-        run: rm -rf node_modules package-lock.json && rm -f .babelrc && npm cache clean --force
-      - name: Install deps
-        run: npm install
+
+      # IMPORTANT: no more deleting package-lock.json.
+      # A missing/regenerated lockfile is what let cli-platform-android
+      # resolve to a version RN 0.73 doesn't expect, which is what silently
+      # breaks autolinking (platforms:[:] / dependencies:[:] in the debug log).
+      - name: Install deps (reproducible, uses committed lockfile)
+        run: npm ci
+
       - name: Verify install
-        run: echo "== package.json ==" && cat package.json && echo "== node_modules count ==" && ls node_modules | wc -l
+        run: |
+          echo "== package.json =="
+          cat package.json
+          echo "== node_modules count =="
+          ls node_modules | wc -l
+
       - name: Debug react-native config deep
         run: |
           echo "check1: actual resolved cli-config version"
           npm ls @react-native-community/cli-config
           echo "check2: actual resolved cli-platform-android version"
           npm ls @react-native-community/cli-platform-android
-          echo "check3: source of loadConfig.js"
-          cat node_modules/@react-native-community/cli-config/build/loadConfig.js
-          echo "check4: source of index.js in cli-config"
-          cat node_modules/@react-native-community/cli-config/build/index.js
+          echo "check3: what react-native config ACTUALLY returns (this is what Gradle calls)"
+          npx react-native config
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
+
       - name: Build Release APK
         run: cd android && ./gradlew assembleRelease --no-daemon
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
