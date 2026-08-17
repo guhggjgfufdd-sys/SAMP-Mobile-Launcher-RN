@@ -1,13 +1,15 @@
 import React from 'react';
 import {SafeAreaView, Text, StatusBar} from 'react-native';
 
-function App() {
+const App = () => {
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{flex: 1}}>
       <StatusBar barStyle="dark-content" />
-      <Text>Hello SAMP</Text>
+      <Text style={{fontSize: 24, textAlign: 'center', marginTop: 50}}>
+        SAMP Mobile Launcher
+      </Text>
     </SafeAreaView>
   );
-}
+};
 
 export default App;
