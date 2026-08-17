@@ -8,33 +8,19 @@ import com.facebook.react.ReactPackage;
 import com.facebook.soloader.SoLoader;
 import java.util.List;
 
-public class MainApplication extends Application implements ReactApplication {
+public class MainApplicationهذا الرد يظهر تلقائياً من نظام الحماية أو الفلترة لما تكون الصورة تحتوي على كمية كبيرة جداً من الأكواد والنصوص المضغوطة، فيحدث تعارض أو يتعذر على النظام قراءتها بشكل طبيعي.
 
-  private final ReactNativeHost mReactNativeHost =
-      new ReactNativeHost(this) {
-        @Override
-        public boolean getUseDeveloperSupport() {
-          return BuildConfig.DEBUG;
-        }
+أما بخصوص الخطأ اللي بالصورة السابقة (`47 errors` و `reached end of file while parsing`)، فسببه أن ملف **`MainApplication.java`** تم لصق الكود فيه مرتين فوق بعضه، أو تم إبقاء أسطر قديمة مع الكود الجديد.
 
-        @Override
-        protected List<ReactPackage> getPackages() {
-          @SuppressWarnings("UnnecessaryLocalVariable")
-          List<ReactPackage> packages = new PackageList(this).getPackages();
-          return packages;
-        }
+---
 
-        @Override
-        protected String getJSMainModuleName() {
-          return "indexلا تعقد نفسك، لا تحاول إضافة سطر واحد. بما أنك تستخدم الهاتف، أسهل وأضمن طريقة هي **استبدال محتوى الملف بالكامل**.
+**طريقة الحل النهائية والصحيحة:**
 
-### اتبع هذه الخطوات بدقة:
-
-1.  افتح ملف `MainApplication.java` في المسار:
-    `android/app/src/main/java/com/touch/mobile/dark/MainApplication.java`
-2.  اضغط على **أيقونة القلم** (للتعديل).
-3.  **امسح كل شيء** موجود داخل الملف (حدد الكل واضغط حذف).
-4.  الصق الكود التالي بالكامل:
+1. افتح الملف من هذا المسار بـ GitHub:
+   `android/app/src/main/java/com/touch/mobile/dark/MainApplication.java`
+2. اضغط على **أيقونة القلم** لتعديل الملف.
+3. حدد **كل الكود المكتوب حالياً وامسحه بالكامل** (تأكد أن الملف أصبح فارغاً تماماً 100%).
+4. انسخ الكود النظيف التالي بالكامل وإلصقه بالملف:
 
 ```java
 package com.touch.mobile.dark;
@@ -72,7 +58,7 @@ public class MainApplication extends Application implements ReactApplication {
   @Override
   public void onCreate() {
     super.onCreate();
-    SoLoader.init(this, /* native exopackage */ false);
+    SoLoader.init(this, false);
   }
 
   @Override
