@@ -3,8 +3,7 @@ name: Build & Release APK
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,7 +11,7 @@ jobs:
     
     env:
       JAVA_OPTS: "-Xmx4096m"
-      GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
+      GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false"
     
     steps:
       - name: Checkout
@@ -38,7 +37,18 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      - name: Clean Gradle
+        run: |
+          cd android
+          ./gradlew clean
+
       - name: Build Release APK
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
