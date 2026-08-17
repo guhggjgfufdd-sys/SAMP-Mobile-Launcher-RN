@@ -37,8 +37,8 @@ jobs:
       - name: Install deps
         run: npm install
 
-      - name: Deduplicate Babel packages
-        run: npm dedupe
+      - name: Debug react-native config
+        run: node node_modules/react-native/cli.js config
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
