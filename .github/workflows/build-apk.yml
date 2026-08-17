@@ -37,6 +37,17 @@ jobs:
       - name: Install deps
         run: npm install
 
+      - name: Verify install
+        run: |
+          echo "== package.json =="
+          cat package.json
+          echo "== node_modules count =="
+          ls node_modules | wc -l
+          echo "== react-native package =="
+          cat node_modules/react-native/package.json | head -5 || echo "MISSING react-native folder!"
+          echo "== react-native-fs package =="
+          cat node_modules/react-native-fs/package.json | head -5 || echo "MISSING react-native-fs folder!"
+
       - name: Debug react-native config
         run: |
           node node_modules/react-native/cli.js config --verbose 2>&1
