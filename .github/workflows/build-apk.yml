@@ -2,68 +2,36 @@ name: Build & Release APK
 
 on:
   push:
-    branches: [main]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      JAVA_OPTS: "-Xmx4096m"
-      GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false"
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: '18'
-          cache: 'yarn'
+          node-version: 18
 
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
         with:
+          distribution: 'zulu'
           java-version: '17'
-          distribution: 'temurin'
 
-      - name: Install deps
-        run: yarn install
-
-      - name: Verify install
+      - name: Install Dependencies
         run: |
-          echo "== package.json =="
-          cat package.json
-          echo "== node_modules count =="
-          ls node_modules | wc -l
+          npm install --force
 
-      - name: Debug babel versions (should show ONE version now)
-        run: |
-          echo "check1: all resolved @babel/core versions"
-          yarn list @babel/core
-          echo "check2: all resolved @babel/traverse versions"
-          yarn list @babel/traverse
-
-      - name: Debug react-native config deep
-        run: |
-          echo "check1: actual resolved cli-config version"
-          yarn list @react-native-community/cli-config --depth=0
-          echo "check2: actual resolved cli-platform-android version"
-          yarn list @react-native-community/cli-platform-android --depth=0
-          echo "check3: what react-native config ACTUALLY returns"
-          npx react-native config
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Make gradlew executable
+      - name: Make Gradle Executable
         run: chmod +x android/gradlew
 
       - name: Build Release APK
-        run: cd android && ./gradlew assembleRelease --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
