@@ -31,27 +31,14 @@ jobs:
         run: echo "== package.json ==" && cat package.json && echo "== node_modules count ==" && ls node_modules | wc -l
       - name: Debug react-native config deep
         run: |
-          echo "check1"
-          find . -maxdepth 2 \( -name "react-native.config.js" -o -name ".react-native.config.js" \) -not -path "*/node_modules/*"
-          echo "check2"
-          node -v
-          npm -v
-          echo "check3"
-          node -e "console.log(JSON.stringify(require('./package.json').dependencies, null, 2))"
-          echo "check4"
-          find node_modules -maxdepth 3 -path "*/node_modules/react-native" -not -path "node_modules/react-native"
-          echo "check5"
-          node -e "try { require('@react-native-community/cli-config'); console.log('cli-config module loaded OK'); } catch (e) { console.log('ERROR loading cli-config:', e.message); }"
-          echo "check6"
-          ls -la node_modules/@react-native-community/
-          echo "check7"
-          node -e "console.log(require.resolve('@react-native-community/cli-platform-android/package.json'))"
-          echo "check8"
-          node -e "console.log(require('@react-native-community/cli-config/package.json').version)"
-          echo "check9"
-          node -e "console.log(require('@react-native-community/cli-platform-android/package.json').version)"
-          echo "check10"
+          echo "check1: direct npx call bypassing react-native/cli.js"
+          npx @react-native-community/cli config --verbose
+          echo "check2: compare with react-native/cli.js wrapper"
           node node_modules/react-native/cli.js config --verbose
+          echo "check3: inspect react-native cli.js file itself"
+          cat node_modules/react-native/cli.js
+          echo "check4: inspect react-native package.json platforms field"
+          node -e "console.log(JSON.stringify(require('react-native/package.json').platforms || 'NO PLATFORMS FIELD', null, 2))"
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       - name: Make gradlew executable
