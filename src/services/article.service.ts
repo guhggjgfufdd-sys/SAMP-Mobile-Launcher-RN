@@ -1,16 +1,6 @@
-import { URL_NEWS_API } from '@env';
-import axios from 'axios';
-
+// بديل وهمي لخدمة الأخبار والمقالات لتجاوز نقص مكتبة axios و @env
 export const ArticleService = {
   async get() {
-    return await axios.get<ArticleType[]>(URL_NEWS_API).then(res => res.data);
+    return [];
   },
-};
-
-export type ArticleType = {
-  title: string;
-  image: string;
-  slug: string;
-  description: string;
-  created_at: string;
 };
