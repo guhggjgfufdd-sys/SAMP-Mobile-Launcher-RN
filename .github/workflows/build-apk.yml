@@ -34,7 +34,6 @@ jobs:
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/75
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
           sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
-          echo "android.nonTransitiveRClass=false" >> android/gradle.properties
 
       - name: Bundle React Native JS Assets
         run: |
@@ -53,4 +52,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: android/app/build/outputs/apk/**/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
