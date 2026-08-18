@@ -5,8 +5,7 @@ buildscript {
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "25.1.8937393"
-        kotlinVersion = "1.8.20"
-        reactNativeVersion = "0.72.6"
+        kotlinVersion = "1.8.22"
     }
     repositories {
         google()
@@ -14,20 +13,8 @@ buildscript {
     }
     dependencies {
         classpath("com.android.tools.build:gradle:8.1.1")
-        classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     }
-}
-
-ext {
-    buildToolsVersion = "34.0.0"
-    minSdkVersion = 21
-    compileSdkVersion = 34
-    targetSdkVersion = 34
-    ndkVersion = "25.1.8937393"
-    kotlinVersion = "1.8.20"
-    reactNativeVersion = "0.72.6"
-    REACT_NATIVE_VERSION = 72
 }
 
 allprojects {
@@ -36,94 +23,13 @@ allprojects {
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
     }
-
-    configurations.all {
-        resolutionStrategy {
-            force "com.facebook.react:react-android:0.72.6"
-            force "com.facebook.react:react-native:0.72.6"
-        }
-    }
 }
 
-subprojects { project ->
-    if (project.name.contains("react-native-reanimated")) {
-        project.ext {
-            reactNativeVersion = "0.72.6"
-            REACT_NATIVE_VERSION = 72
-        }
-    }
-
-    def applyAndroidConfig = {
-        if (project.hasProperty("android")) {
-            project.android {
-                buildFeatures {
-                    buildConfig = true
-                }
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
-                }
-            }
-            if (project.android.namespace == null) {
-                def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
-                if (manifestFile.exists()) {
-                    def manifestText = manifestFile.text
-                    def matcher = manifestText =~ /package="([^"]+)"/
-                    if (matcher.find()) {
-                        project.android.namespace = matcher.group(1)
-                    }
-                }
-            }
-        }
-    }
-
-    project.pluginManager.withPlugin("com.android.library") { applyAndroidConfig() }
-    project.pluginManager.withPlugin("com.android.application") { applyAndroidConfig() }
-}
-
-gradle.projectsEvaluated {
-    allprojects { project ->
-        if (project.hasProperty("android")) {
-            project.android {
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
-                }
-            }
-        }
-
-        if (project.name.contains("react-native-reanimated")) {
-            project.tasks.matching { it.name == "assertMinimalReactNativeVersionTask" }.configureEach {
-                enabled = false
-            }
-
-            if (project.hasProperty("android")) {
-                project.android.sourceSets.main.java.srcDirs = project.android.sourceSets.main.java.srcDirs.findAll { File file ->
-                    !file.absolutePath.contains("reactNativeVersionPatch") || file.absolutePath.contains("/72/") || file.absolutePath.contains("/71/")
-                }
-            }
-        }
-
-        project.tasks.withType(JavaCompile).configureEach { task ->
-            task.sourceCompatibility = JavaVersion.VERSION_17.toString()
-            task.targetCompatibility = JavaVersion.VERSION_17.toString()
-
-            def args = task.options.compilerArgs
-            if (args != null) {
-                def cleanedArgs = []
-                def skipNext = false
-                for (def arg : args) {
-                    if (skipNext) {
-                        skipNext = false
-                        continue
-                    }
-                    if (arg == "-source" || arg == "-target" || arg == "--release") {
-                        skipNext = true
-                        continue
-                    }
-                    cleanedArgs.add(arg)
-                }
-                task.options.compilerArgs = cleanedArgs
+subprojects { subproject ->
+    afterEvaluate {
+        if (subproject.hasProperty("android")) {
+            subproject.android {
+                compileSdkVersion 34
             }
         }
     }
