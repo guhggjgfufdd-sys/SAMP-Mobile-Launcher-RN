@@ -31,6 +31,9 @@ subprojects { subproject ->
         if (subproject.hasProperty("android")) {
             subproject.android {
                 compileSdkVersion 34
+                buildFeatures {
+                    buildConfig true
+                }
             }
         }
     }
