@@ -37,13 +37,8 @@ allprojects {
     }
 }
 
-subprojects { subproject ->
-    subproject.afterEvaluate { project ->
-        project.tasks.withType(JavaCompile).configureEach {
-            sourceCompatibility = JavaVersion.VERSION_17.toString()
-            targetCompatibility = JavaVersion.VERSION_17.toString()
-        }
-
+subprojects { project ->
+    afterEvaluate {
         if (project.hasProperty("android")) {
             project.android {
                 buildFeatures {
@@ -64,6 +59,14 @@ subprojects { subproject ->
                         project.android.namespace = matcher.group(1)
                     }
                 }
+            }
+        }
+
+        project.tasks.withType(JavaCompile).configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+            if (options.hasProperty("release")) {
+                options.release.set(17)
             }
         }
 
