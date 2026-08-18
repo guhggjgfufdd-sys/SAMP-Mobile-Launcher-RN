@@ -38,23 +38,26 @@ allprojects {
 }
 
 subprojects { project ->
-    def applyAndroidConfig = {
+    def applyEarlyConfig = {
         project.android {
             buildFeatures {
                 buildConfig = true
             }
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
-            }
         }
     }
 
-    project.pluginManager.withPlugin("com.android.library") { applyAndroidConfig() }
-    project.pluginManager.withPlugin("com.android.application") { applyAndroidConfig() }
+    project.pluginManager.withPlugin("com.android.library") { applyEarlyConfig() }
+    project.pluginManager.withPlugin("com.android.application") { applyEarlyConfig() }
 
     project.afterEvaluate {
         if (project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+
             if (project.android.namespace == null) {
                 def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                 if (manifestFile.exists()) {
@@ -67,9 +70,16 @@ subprojects { project ->
             }
         }
 
-        project.tasks.withType(JavaCompile).configureEach {
-            sourceCompatibility = JavaVersion.VERSION_17.toString()
-            targetCompatibility = JavaVersion.VERSION_17.toString()
+        project.tasks.withType(JavaCompile).configureEach { task ->
+            task.sourceCompatibility = JavaVersion.VERSION_17.toString()
+            task.targetCompatibility = JavaVersion.VERSION_17.toString()
+
+            def args = task.options.compilerArgs
+            for (int i = 0; i < args.size(); i++) {
+                if ((args[i] == "-source" || args[i] == "-target") && i + 1 < args.size()) {
+                    args[i + 1] = "17"
+                }
+            }
         }
 
         if (project.name.contains("react-native-reanimated")) {
