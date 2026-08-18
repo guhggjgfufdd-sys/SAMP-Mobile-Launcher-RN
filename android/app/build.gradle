@@ -29,9 +29,9 @@ android {
         buildConfig true
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
-            useLegacyPackaging true
+            useLegacyPackaging = true
             excludes += [
                 'lib/arm64-v8a/**',
                 'lib/arm64-v8a/*',
@@ -39,7 +39,9 @@ android {
                 'lib/x86/**'
             ]
         }
-        doNotStrip "**/*.so"
+        resources {
+            excludes += ['META-INF/**']
+        }
     }
 
     signingConfigs {
