@@ -7,17 +7,16 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate;
 
 public class MainActivity extends ReactActivity {
 
-    @Override
-    protected String getMainComponentName() {
-        return "dark";
-    }
+  @Override
+  protected String getMainComponentName() {
+    return "SAMP";
+  }
 
-    @Override
-    protected ReactActivityDelegate createReactActivityDelegate() {
-        return new DefaultReactActivityDelegate(
-            this,
-            getMainComponentName(),
-            DefaultNewArchitectureEntryPoint.getFabricEnabled()
-        );
-    }
+  @Override
+  protected ReactActivityDelegate createReactActivityDelegate() {
+    return new DefaultReactActivityDelegate(
+        this,
+        getMainComponentName(),
+        DefaultNewArchitectureEntryPoint.getFabricEnabled());
+  }
 }
