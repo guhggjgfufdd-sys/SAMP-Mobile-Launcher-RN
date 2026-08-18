@@ -27,7 +27,7 @@ jobs:
       - name: Install Dependencies
         run: yarn install --no-lockfile
 
-      - name: Fix Reanimated & Import R Class
+      - name: Fix Reanimated Issues
         run: |
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/73
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/74
@@ -35,7 +35,6 @@ jobs:
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
           sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
           echo "android.nonTransitiveRClass=false" >> android/gradle.properties
-          find android/app/src/main/java -name "*.java" -exec sed -i '/package /a import com.touch.mobile.dark.R;' {} +
 
       - name: Bundle React Native JS Assets
         run: |
