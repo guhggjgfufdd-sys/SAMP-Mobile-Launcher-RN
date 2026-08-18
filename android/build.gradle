@@ -38,6 +38,11 @@ allprojects {
 }
 
 subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
+
     afterEvaluate { project ->
         if (project.hasProperty("android")) {
             project.android {
