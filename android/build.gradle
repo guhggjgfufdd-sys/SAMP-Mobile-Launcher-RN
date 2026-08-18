@@ -37,8 +37,8 @@ allprojects {
     }
 }
 
-subprojects { project ->
-    afterEvaluate {
+gradle.projectsEvaluated {
+    subprojects { project ->
         if (project.hasProperty("android")) {
             project.android {
                 buildFeatures {
