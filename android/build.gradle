@@ -65,9 +65,6 @@ subprojects { project ->
         project.tasks.withType(JavaCompile).configureEach {
             sourceCompatibility = JavaVersion.VERSION_17.toString()
             targetCompatibility = JavaVersion.VERSION_17.toString()
-            if (options.hasProperty("release")) {
-                options.release.set(17)
-            }
         }
 
         if (project.name.contains("react-native-reanimated")) {
