@@ -92,6 +92,40 @@ gradle.projectsEvaluated {
             }
         }
 
+        if (project.name.contains("react-native-reanimated")) {
+            project.tasks.matching { it.name == "assertMinimalReactNativeVersionTask" }.configureEach {
+                enabled = false
+            }
+
+            if (project.hasProperty("android")) {
+                def newSrcDirs = []
+                project.android.sourceSets.main.java.srcDirs.each { File dir ->
+                    String path = dir.getAbsolutePath()
+                    if (path.contains("reactNativeVersionPatch")) {
+                        File parent = dir.getParentFile()
+                        if (parent != null && parent.exists()) {
+                            def subfolders = parent.listFiles({ File f -> f.isDirectory() } as FileFilter)
+                            if (subfolders) {
+                                def validDir = subfolders.find { f ->
+                                    def name = f.getName()
+                                    return name.isInteger() && name.toInteger() <= 72
+                                }
+                                if (!validDir) {
+                                    validDir = subfolders.min { f -> f.getName().isInteger() ? f.getName().toInteger() : 999 }
+                                }
+                                if (validDir) {
+                                    newSrcDirs.add(validDir)
+                                    return
+                                }
+                            }
+                        }
+                    }
+                    newSrcDirs.add(dir)
+                }
+                project.android.sourceSets.main.java.srcDirs = newSrcDirs
+            }
+        }
+
         project.tasks.withType(JavaCompile).configureEach { task ->
             task.sourceCompatibility = JavaVersion.VERSION_17.toString()
             task.targetCompatibility = JavaVersion.VERSION_17.toString()
@@ -112,12 +146,6 @@ gradle.projectsEvaluated {
                     cleanedArgs.add(arg)
                 }
                 task.options.compilerArgs = cleanedArgs
-            }
-        }
-
-        if (project.name.contains("react-native-reanimated")) {
-            project.tasks.matching { it.name == "assertMinimalReactNativeVersionTask" }.configureEach {
-                enabled = false
             }
         }
     }
