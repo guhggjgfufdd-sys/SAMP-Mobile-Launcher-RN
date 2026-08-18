@@ -50,23 +50,25 @@ subprojects { project ->
 
     project.pluginManager.withPlugin("com.android.library") { applyEarlyConfig() }
     project.pluginManager.withPlugin("com.android.application") { applyEarlyConfig() }
+}
 
-    project.afterEvaluate {
+gradle.projectsEvaluated {
+    allprojects { project ->
         if (project.hasProperty("android")) {
             project.android {
                 compileOptions {
                     sourceCompatibility JavaVersion.VERSION_17
                     targetCompatibility JavaVersion.VERSION_17
                 }
-            }
 
-            if (project.android.namespace == null) {
-                def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
-                if (manifestFile.exists()) {
-                    def manifestText = manifestFile.text
-                    def matcher = manifestText =~ /package="([^"]+)"/
-                    if (matcher.find()) {
-                        project.android.namespace = matcher.group(1)
+                if (project.android.namespace == null) {
+                    def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
+                    if (manifestFile.exists()) {
+                        def manifestText = manifestFile.text
+                        def matcher = manifestText =~ /package="([^"]+)"/
+                        if (matcher.find()) {
+                            project.android.namespace = matcher.group(1)
+                        }
                     }
                 }
             }
@@ -79,21 +81,6 @@ subprojects { project ->
             if (task.options.hasProperty("release")) {
                 task.options.release.set(null)
             }
-
-            def cleanedArgs = []
-            def skipNext = false
-            for (def arg : task.options.compilerArgs) {
-                if (skipNext) {
-                    skipNext = false
-                    continue
-                }
-                if (arg == "--release" || arg == "-source" || arg == "-target") {
-                    skipNext = true
-                    continue
-                }
-                cleanedArgs.add(arg)
-            }
-            task.options.compilerArgs = cleanedArgs
         }
 
         if (project.name.contains("react-native-reanimated")) {
