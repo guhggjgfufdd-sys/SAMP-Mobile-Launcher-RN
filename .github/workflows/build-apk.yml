@@ -2,8 +2,8 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
+    push:
+      branches: [ main ]
 
 jobs:
   build:
@@ -26,6 +26,13 @@ jobs:
 
       - name: Install Dependencies
         run: yarn install --frozen-lockfile || yarn install
+
+      - name: Clean Reanimated Incompatible Patches
+        run: |
+          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/73
+          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/74
+          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/75
+          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x android/gradlew
