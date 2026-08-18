@@ -37,19 +37,26 @@ allprojects {
     }
 }
 
-gradle.projectsEvaluated {
-    subprojects { project ->
-        if (project.hasProperty("android")) {
-            project.android {
-                buildFeatures {
-                    buildConfig true
-                }
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
-                }
+subprojects { project ->
+    project.pluginManager.withPlugin("com.android.library") {
+        project.android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
             }
+        }
+    }
+    project.pluginManager.withPlugin("com.android.application") {
+        project.android {
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
 
+    project.afterEvaluate {
+        if (project.hasProperty("android")) {
             if (project.android.namespace == null) {
                 def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
                 if (manifestFile.exists()) {
