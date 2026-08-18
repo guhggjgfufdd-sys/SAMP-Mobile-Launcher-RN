@@ -36,9 +36,23 @@ allprojects {
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
     }
+
+    configurations.all {
+        resolutionStrategy {
+            force "com.facebook.react:react-android:0.72.0"
+            force "com.facebook.react:react-native:0.72.0"
+        }
+    }
 }
 
 subprojects { project ->
+    if (project.name.contains("react-native-reanimated")) {
+        project.ext {
+            reactNativeVersion = "0.72.0"
+            REACT_NATIVE_VERSION = 72
+        }
+    }
+
     def applyAndroidConfig = {
         if (project.hasProperty("android")) {
             project.android {
@@ -65,11 +79,6 @@ subprojects { project ->
 
     project.pluginManager.withPlugin("com.android.library") { applyAndroidConfig() }
     project.pluginManager.withPlugin("com.android.application") { applyAndroidConfig() }
-
-    if (project.name.contains("react-native-reanimated")) {
-        project.ext.reactNativeVersion = "0.72.0"
-        project.ext.REACT_NATIVE_VERSION = 72
-    }
 }
 
 gradle.projectsEvaluated {
@@ -107,8 +116,6 @@ gradle.projectsEvaluated {
         }
 
         if (project.name.contains("react-native-reanimated")) {
-            project.ext.reactNativeVersion = "0.72.0"
-            project.ext.REACT_NATIVE_VERSION = 72
             project.tasks.matching { it.name == "assertMinimalReactNativeVersionTask" }.configureEach {
                 enabled = false
             }
