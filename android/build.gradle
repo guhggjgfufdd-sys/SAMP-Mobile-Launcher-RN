@@ -37,13 +37,13 @@ allprojects {
     }
 }
 
-subprojects {
-    tasks.withType(JavaCompile).configureEach {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
-    }
+subprojects { subproject ->
+    subproject.afterEvaluate { project ->
+        project.tasks.withType(JavaCompile).configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+        }
 
-    afterEvaluate { project ->
         if (project.hasProperty("android")) {
             project.android {
                 buildFeatures {
