@@ -5,6 +5,7 @@ import com.facebook.react.PackageList;
 import com.facebook.react.ReactApplication;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
 import com.facebook.react.defaults.DefaultReactNativeHost;
 import com.facebook.soloader.SoLoader;
 import java.util.List;
@@ -49,6 +50,13 @@ public class MainApplication extends Application implements ReactApplication {
   @Override
   public void onCreate() {
     super.onCreate();
-    SoLoader.init(this, /* native exopackage */ false);
+    try {
+      SoLoader.init(this, /* native exopackage */ false);
+      if (DefaultNewArchitectureEntryPoint.getFabricEnabled()) {
+        DefaultNewArchitectureEntryPoint.load();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 }
