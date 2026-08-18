@@ -4,7 +4,7 @@ apply plugin: "com.facebook.react"
 def enableProguardInReleaseBuilds = false
 
 project.ext.react = [
-    enableHermes: true
+    enableHermes: false
 ]
 
 android {
