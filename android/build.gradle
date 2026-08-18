@@ -27,6 +27,7 @@ ext {
     ndkVersion = "25.1.8937393"
     kotlinVersion = "1.8.20"
     reactNativeVersion = "0.72.0"
+    REACT_NATIVE_VERSION = 72
 }
 
 allprojects {
@@ -64,6 +65,11 @@ subprojects { project ->
 
     project.pluginManager.withPlugin("com.android.library") { applyAndroidConfig() }
     project.pluginManager.withPlugin("com.android.application") { applyAndroidConfig() }
+
+    if (project.name.contains("react-native-reanimated")) {
+        project.ext.reactNativeVersion = "0.72.0"
+        project.ext.REACT_NATIVE_VERSION = 72
+    }
 }
 
 gradle.projectsEvaluated {
@@ -101,6 +107,8 @@ gradle.projectsEvaluated {
         }
 
         if (project.name.contains("react-native-reanimated")) {
+            project.ext.reactNativeVersion = "0.72.0"
+            project.ext.REACT_NATIVE_VERSION = 72
             project.tasks.matching { it.name == "assertMinimalReactNativeVersionTask" }.configureEach {
                 enabled = false
             }
