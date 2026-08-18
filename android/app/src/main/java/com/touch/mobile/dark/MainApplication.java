@@ -5,16 +5,17 @@ import com.facebook.react.PackageList;
 import com.facebook.react.ReactApplication;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
+import com.facebook.react.defaults.DefaultReactNativeHost;
 import com.facebook.soloader.SoLoader;
 import java.util.List;
 
 public class MainApplication extends Application implements ReactApplication {
 
   private final ReactNativeHost mReactNativeHost =
-      new ReactNativeHost(this) {
+      new DefaultReactNativeHost(this) {
         @Override
         public boolean getUseDeveloperSupport() {
-          return false;
+          return BuildConfig.DEBUG;
         }
 
         @Override
@@ -28,16 +29,26 @@ public class MainApplication extends Application implements ReactApplication {
         protected String getJSMainModuleName() {
           return "index";
         }
-      };
 
-  @Override
-  public void onCreate() {
-    super.onCreate();
-    SoLoader.init(this, false);
-  }
+        @Override
+        protected boolean isNewArchEnabled() {
+          return false;
+        }
+
+        @Override
+        protected Boolean isHermesEnabled() {
+          return false;
+        }
+      };
 
   @Override
   public ReactNativeHost getReactNativeHost() {
     return mReactNativeHost;
+  }
+
+  @Override
+  public void onCreate() {
+    super.onCreate();
+    SoLoader.init(this, /* native exopackage */ false);
   }
 }
