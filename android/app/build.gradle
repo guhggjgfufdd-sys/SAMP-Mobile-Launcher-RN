@@ -10,27 +10,18 @@ project.ext.react = [
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdkVersion rootProject.ext.compileSdkVersion
+    compileSdkVersion 34
     namespace "com.touch.mobile.dark"
 
     defaultConfig {
         applicationId "com.touch.mobile.dark"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion 21
+        targetSdkVersion 34
         versionCode 1
         versionName "1.0"
 
         ndk {
             abiFilters "armeabi-v7a"
-        }
-    }
-
-    splits {
-        abi {
-            reset()
-            enable true
-            universalApk true
-            include "armeabi-v7a"
         }
     }
 
@@ -41,6 +32,12 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
+            excludes += [
+                'lib/arm64-v8a/**',
+                'lib/arm64-v8a/*',
+                'lib/x86_64/**',
+                'lib/x86/**'
+            ]
         }
         doNotStrip "**/*.so"
     }
