@@ -27,7 +27,7 @@ jobs:
       - name: Install Dependencies
         run: yarn install --no-lockfile
 
-      - name: Fix Reanimated Compatibility Issues
+      - name: Fix Reanimated & Patch Rules
         run: |
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/73
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/74
@@ -35,6 +35,11 @@ jobs:
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
           sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
           echo "android.nonTransitiveRClass=false" >> android/gradle.properties
+
+      - name: Bundle React Native JS Assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x android/gradlew
