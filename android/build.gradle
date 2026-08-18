@@ -64,23 +64,15 @@ subprojects { project ->
 
     project.pluginManager.withPlugin("com.android.library") { applyAndroidConfig() }
     project.pluginManager.withPlugin("com.android.application") { applyAndroidConfig() }
+}
 
-    project.afterEvaluate {
+gradle.projectsEvaluated {
+    allprojects { project ->
         if (project.hasProperty("android")) {
             project.android {
                 compileOptions {
                     sourceCompatibility JavaVersion.VERSION_17
                     targetCompatibility JavaVersion.VERSION_17
-                }
-            }
-            if (project.android.namespace == null) {
-                def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
-                if (manifestFile.exists()) {
-                    def manifestText = manifestFile.text
-                    def matcher = manifestText =~ /package="([^"]+)"/
-                    if (matcher.find()) {
-                        project.android.namespace = matcher.group(1)
-                    }
                 }
             }
         }
@@ -89,16 +81,22 @@ subprojects { project ->
             task.sourceCompatibility = JavaVersion.VERSION_17.toString()
             task.targetCompatibility = JavaVersion.VERSION_17.toString()
 
-            def compilerArgsList = task.options.compilerArgs
-            if (compilerArgsList != null) {
-                for (int i = compilerArgsList.size() - 1; i >= 0; i--) {
-                    if (compilerArgsList[i] == "-source" || compilerArgsList[i] == "-target") {
-                        if (i + 1 < compilerArgsList.size()) {
-                            compilerArgsList.remove(i + 1)
-                        }
-                        compilerArgsList.remove(i)
+            def args = task.options.compilerArgs
+            if (args != null) {
+                def cleanedArgs = []
+                def skipNext = false
+                for (def arg : args) {
+                    if (skipNext) {
+                        skipNext = false
+                        continue
                     }
+                    if (arg == "-source" || arg == "-target" || arg == "--release") {
+                        skipNext = true
+                        continue
+                    }
+                    cleanedArgs.add(arg)
                 }
+                task.options.compilerArgs = cleanedArgs
             }
         }
 
