@@ -8,6 +8,7 @@ import { InitiationScreen } from './src/screens/InitiationScreen';
 import ModeScreen from './src/screens/ModeScreen';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import DownloadScreen from './src/screens/LoaderScreen/DownloadScreen';
 
 // استيراد Redux Store
 import { store } from './src/store';
@@ -23,6 +24,7 @@ export default function App() {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="Initiation" component={InitiationScreen} />
+          <Stack.Screen name="DownloadScreen" component={DownloadScreen} />
           <Stack.Screen name="Mode" component={ModeScreen} />
           <Stack.Screen name="Game" component={GameScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
