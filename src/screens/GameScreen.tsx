@@ -8,9 +8,7 @@ import { RootStackParamList } from '../navigation/navigation-router';
 type GameScreenRoute = RouteProp<RootStackParamList, 'Game'>;
 
 const SERVERS = [
-  { id: '1', name: 'Server 1 - Roleplay', ip: '127.0.0.1:7777', players: '45/100' },
-  { id: '2', name: 'Server 2 - DM', ip: '127.0.0.2:7777', players: '12/50' },
-  { id: '3', name: 'Server 3 - TDM', ip: '127.0.0.3:7777', players: '78/200' },
+  { id: 'lv-rp', name: 'Las Venturas RP', ip: '142.132.203.47:21299', players: 'تحقق عند الاتصال' },
 ];
 
 const GameScreen = () => {
