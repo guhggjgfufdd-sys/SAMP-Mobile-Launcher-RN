@@ -1,4 +1,3 @@
-import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect } from 'react';
 import { Dimensions, Text, View } from 'react-native';
@@ -22,14 +21,9 @@ export const InitiationScreen = React.memo(
 
     useEffect(() => {
       dispatch(fetchInitialApp());
-    }, []);
-
-    // توجيه مباشر وفوري لشاشة التنزيل بدون الاستعانة بملفات مفقودة
-    useFocusEffect(
-      React.useCallback(() => {
-        return navigation.replace('DownloadScreen');
-      }, [navigation]),
-    );
+      const frame = requestAnimationFrame(() => navigation.replace('DownloadScreen'));
+      return () => cancelAnimationFrame(frame);
+    }, [dispatch, navigation]);
 
     return (
       <LoaderContainer>
