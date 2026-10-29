@@ -37,10 +37,37 @@ jobs:
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
           sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
 
-      - name: Patch old AsyncStorage namespace for AGP 8
+      - name: Patch legacy Android library namespaces for AGP 8
         run: |
-          sed -i 's/package="com.reactnativecommunity.asyncstorage"//g' node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml
-          grep -q 'namespace "com.reactnativecommunity.asyncstorage"' node_modules/@react-native-async-storage/async-storage/android/build.gradle || sed -i '/^[[:space:]]*android[[:space:]]*{/a\    namespace "com.reactnativecommunity.asyncstorage"' node_modules/@react-native-async-storage/async-storage/android/build.gradle
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          patched = 0
+          for manifest in Path('node_modules').glob('**/android/src/main/AndroidManifest.xml'):
+              xml = manifest.read_text(encoding='utf-8')
+              match = re.search(r'package="([^"]+)"', xml)
+              if not match:
+                  continue
+              namespace = match.group(1)
+              android_dir = manifest.parents[2]
+              build_file = android_dir / 'build.gradle'
+              kotlin_file = android_dir / 'build.gradle.kts'
+              gradle = build_file if build_file.exists() else kotlin_file
+              if not gradle.exists():
+                  continue
+              source = gradle.read_text(encoding='utf-8')
+              if not re.search(r'^\s*namespace\s*[=]?\s*["\']', source, re.M):
+                  block = re.search(r'^\s*android\s*\{', source, re.M)
+                  if not block:
+                      continue
+                  declaration = '    namespace = "' + namespace + '"' if gradle.suffix == '.kts' else '    namespace "' + namespace + '"'
+                  source = source[:block.end()] + '\n' + declaration + source[block.end():]
+                  gradle.write_text(source, encoding='utf-8')
+              xml = xml.replace(match.group(0), '', 1)
+              manifest.write_text(xml, encoding='utf-8')
+              patched += 1
+          print('Patched legacy Android manifests:', patched)
+          PY
 
       - name: Bundle JavaScript assets
         run: |
