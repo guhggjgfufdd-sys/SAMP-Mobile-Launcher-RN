@@ -15,6 +15,7 @@ import com.facebook.react.bridge.ReadableMap;
 import com.touch.mobile.dark.MainGTA;
 
 import java.io.File;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -72,15 +73,16 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
 
             // ← 3. افتح اللعبة
             Activity activity = getCurrentActivity();
-            Intent intent = new Intent(getReactApplicationContext(), MainGTA.class);
-            if (activity != null) {
+                if (activity == null) {
+                    throw new IllegalStateException("Launcher activity is unavailable");
+                }
+                Intent intent = new Intent(activity, MainGTA.class);
                 intent.putExtras(activity.getIntent());
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getReactApplicationContext().startActivity(intent);
+                activity.startActivity(intent);
                 activity.finish();
-            }
 
-            promise.resolve(null);
+                promise.resolve(null);
 
         } catch (Exception e) {
             Log.e(TAG, "Error launching game: " + e.getMessage());
@@ -88,39 +90,48 @@ public class GtaSetupModule extends ReactContextBaseJavaModule {
         }
     }
 
-    // ← دالة جديدة: نسخ ملفات الكاش تلقائياً
-    private void copyCacheFiles() {
-        try {
-            File sourceDir = new File(Environment.getExternalStorageDirectory(), "Download/SAMP");
+    private void copyCacheFiles() throws IOException {
             File targetDir = getReactApplicationContext().getExternalFilesDir(null);
-
-            if (!sourceDir.exists()) {
-                Log.w(TAG, "Cache not found in: " + sourceDir.getAbsolutePath());
-                return;
-            }
-
             if (targetDir == null) {
-                Log.e(TAG, "Target dir is null!");
+                throw new IOException("Game storage is unavailable");
+            }
+
+            File cacheDir = new File(targetDir, "SAMP-cache");
+            File sourceVersion = new File(cacheDir, ".cache-version");
+            if (!sourceVersion.isFile()) {
+                throw new IOException("SA-MP cache is not installed");
+            }
+
+            String version = readTextFile(sourceVersion).trim();
+            if (version.isEmpty()) {
+                throw new IOException("SA-MP cache version marker is invalid");
+            }
+
+            File installedVersion = new File(targetDir, ".cache-version");
+            if (installedVersion.isFile() && version.equals(readTextFile(installedVersion).trim())) {
                 return;
             }
 
-            // انسخ فقط إذا الملفات مو موجودة في الهدف (أول مرة فقط)
-            File checkFile = new File(targetDir, "stream.ini");
-            if (!checkFile.exists()) {
-                Log.d(TAG, "Copying cache files...");
-                copyDirectory(sourceDir, targetDir);
-                Log.d(TAG, "Cache copied to: " + targetDir.getAbsolutePath());
-            } else {
-                Log.d(TAG, "Cache already exists, skipping copy");
+            copyDirectory(cacheDir, targetDir);
+            if (!installedVersion.isFile() || !version.equals(readTextFile(installedVersion).trim())) {
+                throw new IOException("Could not copy the SA-MP cache into game storage");
             }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error copying cache: " + e.getMessage());
-            e.printStackTrace();
+            Log.i(TAG, "Installed SA-MP cache version " + version);
         }
-    }
 
-    private void copyDirectory(File source, File target) throws IOException {
+        private String readTextFile(File file) throws IOException {
+            try (FileInputStream input = new FileInputStream(file);
+                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, length);
+                }
+                return output.toString("UTF-8");
+            }
+        }
+
+        private void copyDirectory(File source, File target) throws IOException {
         if (source.isDirectory()) {
             if (!target.exists()) {
                 target.mkdirs();
