@@ -20,7 +20,7 @@ import React, { useCallback, useEffect, useState } from 'react';
     import { RootStackParamList } from '../types/navigation';
 
     type ModeNavigation = NativeStackNavigationProp<RootStackParamList, 'Mode'>;
-    const CACHE_DIR = RNFS.ExternalDirectoryPath + '/SAMP';
+    const CACHE_DIR = RNFS.ExternalDirectoryPath + '/SAMP-cache';
     const CACHE_ARCHIVE = RNFS.ExternalDirectoryPath + '/samp-cache-' + CACHE_VERSION + '.zip';
     const CACHE_MARKER = CACHE_DIR + '/.cache-version';
 
