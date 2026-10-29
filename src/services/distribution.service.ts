@@ -1,76 +1,76 @@
-export const DistributionService = {
-  async get() {
-    return {
-      cdnLauncher: '',
-      cdnCache: 'https://github.com/guhggjgfufdd-sys/SAMP-Mobile-Launcher-RN/releases/download/v1.0/2.11.gta.sa.zip',
-      cacheMode: [],
-      rss: '',
-      versionHash: '1.0.0',
-      packageName: 'com.touch.mobile.dark',
-      projectName: 'Touch Mobile Dark',
-      servers: [
-        {
-          id: 1,
-          show: true,
-          version: '0.3.DL',          // ← لازم يطابق distribution.json
-          icon: '',
-          events: [],
-          slot: 100,
-          bonus: false,
-          name: 'Las Venturas RP',
-          description: 'Main Server',
-          address: '142.132.203.47:21299',
-          sampVersion: '0.3.DL',      // ← لازم يطابق distribution.json
-        },
-      ],
-      launcher: {
-        appVersion: '1.0.0',
-        name: 'launcher.apk',
-        hash: '',
-        bytes: 1,
-        size: '1',
+import { CACHE_URL, SERVER_ADDRESS } from '../config/launcher';
+
+    export const DistributionService = {
+      async get() {
+        return {
+          cdnLauncher: '',
+          cdnCache: CACHE_URL,
+          cacheMode: [],
+          rss: '',
+          versionHash: '1.0.1',
+          packageName: 'com.touch.mobile.dark',
+          projectName: 'Nightshift',
+          servers: [
+            {
+              id: 1,
+              show: true,
+              version: '0.3.DL',
+              icon: '',
+              events: [],
+              slot: 100,
+              bonus: false,
+              name: 'SA-MP Server',
+              description: 'SA-MP',
+              address: SERVER_ADDRESS,
+              sampVersion: '0.3.DL',
+            },
+          ],
+          launcher: {
+            appVersion: '1.0.1',
+            name: 'launcher.apk',
+            hash: '',
+            bytes: 1,
+            size: '1',
+          },
+          filesContinue: [],
+        };
       },
-      filesContinue: [],
     };
-  },
-};
 
-export type DistributionResponse = {
-  cdnLauncher: string;
-  cdnCache: string;
-  cacheMode: any[];
-  rss: string;
-  versionHash: string;
-  packageName: string;
-  projectName: string;
-  servers: ServerType[];
-  launcher: LauncherType;
-  filesContinue: string[];
-};
+    export type DistributionResponse = {
+      cdnLauncher: string;
+      cdnCache: string;
+      cacheMode: any[];
+      rss: string;
+      versionHash: string;
+      packageName: string;
+      projectName: string;
+      servers: ServerType[];
+      launcher: LauncherType;
+      filesContinue: string[];
+    };
 
-export type LauncherType = {
-  appVersion: string;
-  name: string;
-  hash: string;
-  bytes: number;
-  size: string;
-};
+    export type LauncherType = {
+      appVersion: string;
+      name: string;
+      hash: string;
+      bytes: number;
+      size: string;
+    };
 
-export type EventType = {
-  title: string;
-  style: 'red' | 'blue';
-};
+    export type EventType = { title: string; style: 'red' | 'blue' };
 
-export type ServerType = {
-  id: number;
-  show: boolean;
-  version: string;
-  icon: string;
-  events: EventType[];
-  slot: number;
-  bonus: boolean;
-  name: string;
-  description: string;
-  address: string;
-  sampVersion: string;
-};
+    export type ServerType = {
+      id: number;
+      show: boolean;
+      version: string;
+      icon: string;
+      events: EventType[];
+      slot: number;
+      bonus: boolean;
+      name: string;
+      description: string;
+      address: string;
+      sampVersion: string;
+    };
+    
