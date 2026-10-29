@@ -1,55 +1,73 @@
-name: Build Android APK
+name: Build SAMP Mobile APK
 
-on:
-  workflow_dispatch:
-    push:
-      branches: [ main ]
+    on:
+      workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout source
+            uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+          - name: Set up Node.js
+            uses: actions/setup-node@v4
+            with:
+              node-version: 18
 
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+          - name: Set up Java
+            uses: actions/setup-java@v4
+            with:
+              distribution: zulu
+              java-version: '17'
 
-      - name: Install Dependencies
-        run: yarn install --no-lockfile
+          - name: Install dependencies
+            run: yarn install --no-lockfile
 
-      - name: Fix Reanimated Issues
-        run: |
-          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/73
-          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/74
-          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/75
-          rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
-          sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
+          - name: Patch Reanimated for Android build
+            run: |
+              rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/73
+              rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/74
+              rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/75
+              rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
+              sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
 
-      - name: Bundle React Native JS Assets
-        run: |
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ --reset-cache
+          - name: Bundle JavaScript assets
+            run: |
+              mkdir -p android/app/src/main/assets
+              npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ --reset-cache
 
-      - name: Make Gradle Wrapper Executable
-        run: chmod +x android/gradlew
+          - name: Build release APK
+            run: |
+              chmod +x android/gradlew
+              cd android
+              ./gradlew assembleRelease --no-daemon
+              cd ..
+              test -s android/app/build/outputs/apk/release/app-release.apk
+              cp android/app/build/outputs/apk/release/app-release.apk samp-mobile-launcher-armv7.apk
 
-      - name: Build APK
-        run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon
+          - name: Upload build artifact
+            uses: actions/upload-artifact@v4
+            with:
+              name: samp-mobile-launcher-armv7
+              path: samp-mobile-launcher-armv7.apk
+              retention-days: 14
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: android/app/build/outputs/apk/release/*.apk
+          - name: Publish APK release
+            uses: softprops/action-gh-release@v2
+            with:
+              tag_name: launcher-v1.0.1
+              name: SAMP Mobile Launcher 1.0.1 - ARMv7
+              target_commitish: ${{ github.sha }}
+              body: |
+                Android APK configured for SA-MP server 142.132.203.47:21299 with the 2.11 cache download flow.
+
+                ABI: armeabi-v7a (32-bit). ARM64 phones that still support 32-bit apps are compatible; 64-bit-only devices are not supported by the available game libraries.
+              files: samp-mobile-launcher-armv7.apk
+              fail_on_unmatched_files: true
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
