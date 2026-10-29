@@ -1,8 +1,15 @@
 import { NativeModules } from 'react-native';
 
-const { GtaSetupModule } = NativeModules;
+    type GameLaunchData = { address: string; playerName: string };
+    type GtaSetupNativeModule = { launchGame: (data: GameLaunchData) => Promise<void> };
+    const nativeModule = NativeModules.GtaSetupModule as GtaSetupNativeModule | undefined;
 
-export default {
-  startGame: () => GtaSetupModule.startGame(),
-  launchGame: (data: any) => GtaSetupModule.launchGame(data),
-};
+    export default {
+      launchGame: (data: GameLaunchData) => {
+        if (!nativeModule?.launchGame) {
+          return Promise.reject(new Error('وحدة تشغيل اللعبة غير متاحة في هذا البناء.'));
+        }
+        return nativeModule.launchGame(data);
+      },
+    };
+    
