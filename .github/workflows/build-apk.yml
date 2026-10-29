@@ -69,6 +69,9 @@ jobs:
           print('Patched legacy Android manifests:', patched)
           PY
 
+      - name: Fix old react-native-screens AppCompat attribute
+        run: sed -i 's/R\.attr\.colorPrimary/androidx.appcompat.R.attr.colorPrimary/g' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
+
       - name: Bundle JavaScript assets
         run: |
           mkdir -p android/app/src/main/assets
