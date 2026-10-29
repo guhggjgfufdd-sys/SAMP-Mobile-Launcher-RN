@@ -38,9 +38,9 @@ jobs:
           sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
 
       - name: Patch old AsyncStorage manifest for AGP 8
-            run: sed -i 's/package="com.reactnativecommunity.asyncstorage"//g' node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml
+        run: sed -i 's/package="com.reactnativecommunity.asyncstorage"//g' node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml
 
-          - name: Bundle JavaScript assets
+      - name: Bundle JavaScript assets
         run: |
           mkdir -p android/app/src/main/assets
           npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ --reset-cache
