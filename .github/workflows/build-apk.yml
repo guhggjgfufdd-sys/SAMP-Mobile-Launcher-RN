@@ -37,8 +37,10 @@ jobs:
           rm -rf node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/76
           sed -i 's/com.swmansion.reanimated.R.id.action_bar_root/android.R.id.content/g' node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/keyboardObserver/ReanimatedKeyboardEventListener.java
 
-      - name: Patch old AsyncStorage manifest for AGP 8
-        run: sed -i 's/package="com.reactnativecommunity.asyncstorage"//g' node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml
+      - name: Patch old AsyncStorage namespace for AGP 8
+        run: |
+          sed -i 's/package="com.reactnativecommunity.asyncstorage"//g' node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml
+          grep -q 'namespace "com.reactnativecommunity.asyncstorage"' node_modules/@react-native-async-storage/async-storage/android/build.gradle || sed -i '/^[[:space:]]*android[[:space:]]*{/a\    namespace "com.reactnativecommunity.asyncstorage"' node_modules/@react-native-async-storage/async-storage/android/build.gradle
 
       - name: Bundle JavaScript assets
         run: |
