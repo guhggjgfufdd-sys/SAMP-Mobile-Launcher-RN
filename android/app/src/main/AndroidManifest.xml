@@ -9,7 +9,7 @@
 
     <application
       android:name=".MainApplication"
-      android:label="Las Venturas RP"
+      android:label="SAMP Mobile"
       android:icon="@mipmap/ic_launcher"
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
@@ -29,5 +29,12 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
-    </application>
+      <activity
+            android:name=".MainGTA"
+            android:label="GTA San Andreas"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:screenOrientation="landscape"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+        </application>
 </manifest>
